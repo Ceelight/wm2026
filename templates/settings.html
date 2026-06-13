@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-12 col-md-6 col-lg-4">
+    <h4 class="fw-bold mb-3">{{ t('my_settings') }}</h4>
+
+    {% if msg %}
+    <div class="alert alert-success">{{ msg }}</div>
+    {% endif %}
+    {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="/settings">
+      <div class="card mb-3">
+        <div class="card-header fw-semibold">{{ t('language') }}</div>
+        <div class="card-body">
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="language" value="de" id="lang_de"
+              {% if user.language == 'de' %}checked{% endif %}>
+            <label class="form-check-label" for="lang_de">🇩🇪 Deutsch</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="language" value="en" id="lang_en"
+              {% if user.language == 'en' %}checked{% endif %}>
+            <label class="form-check-label" for="lang_en">🇬🇧 English</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="language" value="es" id="lang_es"
+              {% if user.language == 'es' %}checked{% endif %}>
+            <label class="form-check-label" for="lang_es">🇪🇸 Español</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header fw-semibold">{{ t('change_password') }}</div>
+        <div class="card-body">
+          <div class="mb-2">
+            <label class="form-label">{{ t('new_password') }}</label>
+            <input type="password" name="new_password" class="form-control" autocomplete="new-password">
+          </div>
+          <div class="mb-2">
+            <label class="form-label">{{ t('confirm_password') }}</label>
+            <input type="password" name="confirm_password" class="form-control" autocomplete="new-password">
+          </div>
+          <small class="text-muted">Leer lassen, um das Passwort nicht zu ändern.</small>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-success w-100">{{ t('save') }}</button>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

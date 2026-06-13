@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h4 class="fw-bold mb-3">🏆 {{ t('leaderboard') }}</h4>
+
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-success">
+      <tr>
+        <th style="width:60px">{{ t('rank') }}</th>
+        <th>{{ t('player') }}</th>
+        <th class="text-end">{{ t('total_points') }}</th>
+        <th class="text-end d-none d-md-table-cell"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in board %}
+      <tr {% if entry.user.id == user.id %}class="table-warning fw-bold"{% endif %}>
+        <td>
+          {% if entry.rank == 1 %}🥇
+          {% elif entry.rank == 2 %}🥈
+          {% elif entry.rank == 3 %}🥉
+          {% else %}{{ entry.rank }}{% endif %}
+        </td>
+        <td>
+          <a href="/tips/{{ entry.user.id }}" class="text-decoration-none text-dark">
+            {{ entry.user.username }}
+            {% if entry.user.id == user.id %}<span class="badge bg-warning text-dark ms-1">Du</span>{% endif %}
+          </a>
+        </td>
+        <td class="text-end fs-5 fw-bold text-success">{{ entry.total }}</td>
+        <td class="text-end d-none d-md-table-cell">
+          <a href="/tips/{{ entry.user.id }}" class="btn btn-sm btn-outline-secondary">
+            {{ t('all_tips') }} →
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

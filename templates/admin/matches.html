@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h4 class="fw-bold mb-0">⚙️ {{ t('admin_matches') }}</h4>
+  <div class="d-flex gap-2 flex-wrap">
+    <form method="post" action="/admin/sync">
+      <button class="btn btn-outline-primary btn-sm">🌐 API-Sync</button>
+    </form>
+    <form method="post" action="/admin/recalc">
+      <button class="btn btn-outline-warning btn-sm">🔄 {{ t('recalc_points') }}</button>
+    </form>
+  </div>
+</div>
+
+{% if msg %}
+<div class="alert alert-success">{{ msg }}</div>
+{% endif %}
+
+<div class="accordion" id="matchAccordion">
+{% set current_round = namespace(val='') %}
+{% for match in matches %}
+{% if match.round != current_round.val %}
+{% set current_round.val = match.round %}
+<div class="accordion-item">
+  <h2 class="accordion-header">
+    <button class="accordion-button {% if not loop.first %}collapsed{% endif %} fw-semibold"
+      type="button" data-bs-toggle="collapse" data-bs-target="#round-{{ loop.index }}">
+      {{ match.round }}
+    </button>
+  </h2>
+  <div id="round-{{ loop.index }}" class="accordion-collapse collapse {% if not loop.first %}{% else %}show{% endif %}"
+    data-bs-parent="#matchAccordion">
+    <div class="accordion-body p-0">
+{% endif %}
+
+<div class="border-bottom p-3">
+  <div class="row g-2 align-items-center">
+    <div class="col-12 col-md-1 text-muted small">#{{ match.match_number }}</div>
+    <div class="col-12 col-md-2 small text-muted">{{ match.kickoff_utc|fmt_mesz }} MESZ</div>
+    <div class="col-12 col-md-3">
+      <span class="fw-bold">{{ match.team1 }}</span>
+      <span class="text-muted mx-1">vs</span>
+      <span class="fw-bold">{{ match.team2 }}</span>
+    </div>
+    <div class="col-12 col-md-2 small text-muted">{{ match.city }}</div>
+    <!-- Set result -->
+    <div class="col-12 col-md-4">
+      <form method="post" action="/admin/matches/{{ match.id }}/result" class="d-flex gap-1 align-items-center flex-wrap">
+        <input type="number" name="score1" min="0" max="30" class="form-control form-control-sm"
+          style="width:55px" value="{{ match.score1 if match.score1 is not none else '' }}" placeholder="0">
+        <span>:</span>
+        <input type="number" name="score2" min="0" max="30" class="form-control form-control-sm"
+          style="width:55px" value="{{ match.score2 if match.score2 is not none else '' }}" placeholder="0">
+        <select name="status" class="form-select form-select-sm" style="width:auto">
+          <option value="scheduled" {% if match.status == 'scheduled' %}selected{% endif %}>Geplant</option>
+          <option value="live" {% if match.status == 'live' %}selected{% endif %}>Live</option>
+          <option value="finished" {% if match.status == 'finished' %}selected{% endif %}>Beendet</option>
+        </select>
+        <button class="btn btn-sm btn-success">✓</button>
+      </form>
+      <!-- Nachtrag-Toggle -->
+      <form method="post" action="/admin/matches/{{ match.id }}/toggle-tips" class="d-inline mt-1">
+        <button class="btn btn-sm {% if match.tips_open %}btn-warning{% else %}btn-outline-secondary{% endif %}" title="Nachtragen erlauben">
+          {{ '🔓 Nachtrag' if match.tips_open else '🔒' }}
+        </button>
+      </form>
+      <!-- KO teams update (only for TBD matches) -->
+      {% if match.team1 == 'TBD' or match.team2 == 'TBD' %}
+      <form method="post" action="/admin/matches/{{ match.id }}/teams" class="d-flex gap-1 mt-1 flex-wrap">
+        <input type="text" name="team1" class="form-control form-control-sm" style="width:120px"
+          value="{{ match.team1 }}" placeholder="Team 1">
+        <input type="text" name="team2" class="form-control form-control-sm" style="width:120px"
+          value="{{ match.team2 }}" placeholder="Team 2">
+        <button class="btn btn-sm btn-outline-primary">Teams setzen</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% if loop.last or matches[loop.index0 + 1].round != match.round %}
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endfor %}
+</div>
+
+{% endblock %}

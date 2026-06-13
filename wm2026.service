@@ -1,0 +1,16 @@
+[Unit]
+Description=WM 2026 Tippspiel
+After=network.target
+
+[Service]
+Type=simple
+User=claude
+WorkingDirectory=/opt/wm2026
+Environment=PATH=/home/claude/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONPATH=/home/claude/.local/lib/python3.14/site-packages:/opt/wm2026
+ExecStart=/home/claude/.local/bin/uvicorn app:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

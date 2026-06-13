@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+jinja2
+python-multipart
+apscheduler
+bcrypt
+itsdangerous
+sqlalchemy
+aiosqlite

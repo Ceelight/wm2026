@@ -1,0 +1,39 @@
+body {
+  font-size: 0.95rem;
+}
+
+.match-card {
+  transition: box-shadow 0.15s;
+}
+.match-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.score-input {
+  text-align: center;
+  -moz-appearance: textfield;
+}
+.score-input::-webkit-outer-spin-button,
+.score-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+.nav-pills .nav-link {
+  white-space: nowrap;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.7rem;
+}
+
+.badge.fs-6 {
+  font-size: 0.9rem !important;
+}
+
+@media (max-width: 576px) {
+  .container-fluid {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  .card-body {
+    padding: 0.6rem 0.75rem;
+  }
+}

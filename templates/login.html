@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ t('app_title') }} – {{ t('login') }}</title>
+  <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body class="bg-light d-flex align-items-center" style="min-height:100vh">
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-12 col-sm-8 col-md-5 col-lg-4">
+      <div class="card shadow-sm">
+        <div class="card-body p-4">
+          <div class="text-center mb-4">
+            <div style="font-size:3rem">⚽</div>
+            <h4 class="fw-bold text-success">{{ t('app_title') }}</h4>
+          </div>
+          {% if error %}
+          <div class="alert alert-danger py-2">{{ t('login_error') }}</div>
+          {% endif %}
+          <form method="post" action="/login">
+            <div class="mb-3">
+              <label class="form-label fw-semibold">{{ t('username') }}</label>
+              <input type="text" name="username" class="form-control" autofocus required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">{{ t('password') }}</label>
+              <input type="password" name="password" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-success w-100 fw-bold">{{ t('login') }}</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/static/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

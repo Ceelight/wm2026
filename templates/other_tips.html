@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex align-items-center gap-3 mb-3">
+  <a href="/leaderboard" class="btn btn-sm btn-outline-secondary">← {{ t('leaderboard') }}</a>
+  <h4 class="mb-0 fw-bold">{{ t('tip_other_user') }}: {{ target.username }}</h4>
+</div>
+
+{% for match in matches %}
+{% set their_tip = their_tips.get(match.id) %}
+{% set my_tip = my_tips.get(match.id) %}
+{% set has_result = match.score1 is not none %}
+{% set kickoff = match.kickoff_utc %}
+{% set locked = (now >= kickoff) and not match.tips_open %}
+
+<div class="card mb-2 {% if has_result %}border-0 bg-light{% endif %}">
+  <div class="card-body py-2 px-3">
+    <div class="row align-items-center g-2">
+      <div class="col-12 col-md-2">
+        <small class="text-muted d-block">{{ match.round }}</small>
+        <small class="text-muted">{{ kickoff|fmt_mesz }} MESZ</small>
+      </div>
+      <div class="col-12 col-md-3">
+        <span class="fw-bold">{{ match.team1 }}</span>
+        <span class="text-muted mx-1">vs</span>
+        <span class="fw-bold">{{ match.team2 }}</span>
+        {% if has_result %}
+        <span class="badge bg-success ms-1">{{ match.score1 }}:{{ match.score2 }}</span>
+        {% endif %}
+      </div>
+      <!-- Their tip (only shown after kickoff or if finished) -->
+      <div class="col-12 col-md-3">
+        <small class="text-muted">{{ target.username }}:</small>
+        {% if locked or has_result %}
+          {% if their_tip and their_tip.tip_score1 is not none %}
+            <span class="fw-bold ms-1">{{ their_tip.tip_score1 }}:{{ their_tip.tip_score2 }}</span>
+          {% else %}
+            <span class="text-muted fst-italic ms-1">{{ t('not_tipped') }}</span>
+          {% endif %}
+        {% else %}
+          <span class="text-muted fst-italic ms-1">🔒</span>
+        {% endif %}
+      </div>
+      <!-- My tip -->
+      <div class="col-12 col-md-2">
+        <small class="text-muted">{{ t('your_tip') }}:</small>
+        {% if my_tip and my_tip.tip_score1 is not none %}
+          <span class="fw-bold ms-1">{{ my_tip.tip_score1 }}:{{ my_tip.tip_score2 }}</span>
+        {% else %}
+          <span class="text-muted fst-italic ms-1">-</span>
+        {% endif %}
+      </div>
+      <!-- Points -->
+      <div class="col-12 col-md-2 text-md-end">
+        {% if has_result and their_tip and their_tip.tip_score1 is not none %}
+          <span class="badge fs-6
+            {% if their_tip.points == 3 %}bg-success
+            {% elif their_tip.points == 2 %}bg-primary
+            {% elif their_tip.points == 1 %}bg-warning text-dark
+            {% else %}bg-danger{% endif %}">
+            {{ their_tip.points }} {{ t('points') }}
+          </span>
+        {% elif has_result %}
+          <span class="badge bg-danger fs-6">0 {{ t('points') }}</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% endblock %}

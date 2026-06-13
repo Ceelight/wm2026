@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h4 class="fw-bold mb-3">⚙️ Admin-Einstellungen</h4>
+
+{% if msg %}
+<div class="alert alert-success">{{ msg }}</div>
+{% endif %}
+
+<div class="card mb-4" style="max-width:600px">
+  <div class="card-header fw-semibold">🌐 football-data.org API</div>
+  <div class="card-body">
+    <p class="text-muted small mb-3">
+      API-Token von <a href="https://www.football-data.org/" target="_blank" rel="noopener">football-data.org</a>.
+      Wird für den automatischen Import aller Spielpaarungen und Ergebnisse benötigt.
+    </p>
+    <form method="post" action="/admin/settings">
+      <div class="mb-3">
+        <label class="form-label fw-semibold">API-Token</label>
+        <input type="password" name="api_token" class="form-control font-monospace"
+               value="{{ api_token }}" placeholder="Token hier eintragen…" autocomplete="off">
+        <div class="form-text">Der Token wird verschlüsselt in der Datenbank gespeichert und nicht im Code hinterlegt.</div>
+      </div>
+      <button type="submit" class="btn btn-success">Speichern</button>
+      {% if api_token %}
+      <span class="ms-3 text-success small">✓ Token ist konfiguriert</span>
+      {% else %}
+      <span class="ms-3 text-danger small">⚠ Kein Token – API-Sync nicht möglich</span>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+{% endblock %}

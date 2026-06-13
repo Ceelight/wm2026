@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <h4 class="mb-0 fw-bold">{{ t('dashboard') }}</h4>
+  <span class="badge bg-secondary">{{ t('deadline_info') }}</span>
+</div>
+
+<!-- Round filter tabs -->
+<div class="mb-3 overflow-auto">
+  <ul class="nav nav-pills flex-nowrap" id="roundTabs">
+    <li class="nav-item">
+      <a class="nav-link active" href="#" data-round="all">{{ t('all_groups') }}</a>
+    </li>
+    {% for r in rounds %}
+    <li class="nav-item">
+      <a class="nav-link" href="#" data-round="{{ r }}">{{ r }}</a>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+
+<!-- Gruppentabellen (basierend auf eigenen Tipps) -->
+{% for rnd, table in group_tables.items() %}
+<div class="group-table-section d-none mb-3" data-table-round="{{ rnd }}">
+  <div class="card">
+    <div class="card-header py-2 fw-semibold bg-success text-white">
+      📊 {{ rnd }} – Tabelle (deine Tipps)
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Team</th>
+            <th class="text-center" title="Spiele">Sp</th>
+            <th class="text-center" title="Siege">S</th>
+            <th class="text-center" title="Unentschieden">U</th>
+            <th class="text-center" title="Niederlagen">N</th>
+            <th class="text-center" title="Tore:Gegentore">Tore</th>
+            <th class="text-center" title="Tordifferenz">TD</th>
+            <th class="text-center fw-bold" title="Punkte">Pts</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for i, row in enumerate(table) %}
+          <tr {% if i < 2 %}class="table-success"{% elif i == 2 %}class="table-warning"{% endif %}>
+            <td class="text-muted">{{ i + 1 }}</td>
+            <td class="fw-semibold">{{ row.team }}</td>
+            <td class="text-center">{{ row.sp }}</td>
+            <td class="text-center">{{ row.s }}</td>
+            <td class="text-center">{{ row.u }}</td>
+            <td class="text-center">{{ row.n }}</td>
+            <td class="text-center">{{ row.tore }}:{{ row.gegentore }}</td>
+            <td class="text-center">{{ '%+d' % row.td if row.sp > 0 else '–' }}</td>
+            <td class="text-center fw-bold fs-6">{{ row.pts }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card-footer text-muted small py-1">
+      🟢 Direkte Qualifikation &nbsp;🟡 Mögliche Qualifikation als Gruppendritter
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+<!-- Match cards -->
+{% for match in matches %}
+{% set tip = my_tips.get(match.id) %}
+{% set kickoff = match.kickoff_utc %}
+{% set locked = (now >= kickoff) and not match.tips_open %}
+{% set has_result = match.score1 is not none %}
+<div class="match-card card mb-2 {% if has_result %}border-0 bg-light{% endif %}" data-round="{{ match.round }}">
+  <div class="card-body py-2 px-3">
+    <div class="row align-items-center g-2">
+      <!-- Round + Date -->
+      <div class="col-12 col-md-2">
+        <small class="text-muted d-block">{{ match.round }}</small>
+        <small class="text-muted">{{ kickoff|fmt_mesz }} MESZ</small>
+      </div>
+      <!-- Teams + Result -->
+      <div class="col-12 col-md-4">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span class="fw-bold">{{ match.team1 }}</span>
+          <span class="text-muted">vs</span>
+          <span class="fw-bold">{{ match.team2 }}</span>
+          {% if has_result %}
+          <span class="badge bg-success ms-1">{{ match.score1 }}:{{ match.score2 }}</span>
+          {% elif locked %}
+          <span class="badge bg-warning text-dark ms-1">{{ t('status_live') if match.status == 'live' else '▶' }}</span>
+          {% endif %}
+        </div>
+        <small class="text-muted">{{ match.city }}</small>
+      </div>
+      <!-- Tip input -->
+      <div class="col-12 col-md-4">
+        {% if locked %}
+          <div class="d-flex align-items-center gap-2">
+            {% if tip and tip.tip_score1 is not none %}
+              <span class="text-muted small">{{ t('your_tip') }}:</span>
+              <span class="fw-bold">{{ tip.tip_score1 }}:{{ tip.tip_score2 }}</span>
+            {% else %}
+              <span class="text-muted small fst-italic">{{ t('not_tipped') }}</span>
+            {% endif %}
+          </div>
+        {% else %}
+          <form class="tip-form d-flex align-items-center gap-1" data-match-id="{{ match.id }}">
+            <span class="text-muted small">{{ t('your_tip') }}:</span>
+            <input type="number" name="tip_score1" min="0" max="30" class="form-control form-control-sm score-input"
+              value="{{ tip.tip_score1 if tip and tip.tip_score1 is not none else '' }}"
+              placeholder="0" style="width:60px">
+            <span>:</span>
+            <input type="number" name="tip_score2" min="0" max="30" class="form-control form-control-sm score-input"
+              value="{{ tip.tip_score2 if tip and tip.tip_score2 is not none else '' }}"
+              placeholder="0" style="width:60px">
+            <button type="submit" class="btn btn-sm btn-success">✓</button>
+            <span class="save-status text-success small d-none">✓</span>
+          </form>
+        {% endif %}
+      </div>
+      <!-- Points -->
+      <div class="col-12 col-md-2 text-md-end">
+        {% if has_result and tip and tip.tip_score1 is not none %}
+          <span class="badge fs-6
+            {% if tip.points == 3 %}bg-success
+            {% elif tip.points == 2 %}bg-primary
+            {% elif tip.points == 1 %}bg-warning text-dark
+            {% else %}bg-danger{% endif %}">
+            {{ tip.points }} {{ t('points') }}
+          </span>
+        {% elif has_result %}
+          <span class="badge bg-danger fs-6">0 {{ t('points') }}</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+<!-- Points rules modal trigger -->
+<div class="text-center mt-4">
+  <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#rulesModal">
+    ℹ️ {{ t('points_info') }}
+  </button>
+</div>
+
+<!-- Rules modal -->
+<div class="modal fade" id="rulesModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title">{{ t('points_info') }}</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item d-flex align-items-center gap-2">
+            <span class="badge bg-success">3</span> {{ t('points_3') }}
+          </li>
+          <li class="list-group-item d-flex align-items-center gap-2">
+            <span class="badge bg-primary">2</span> {{ t('points_2') }}
+          </li>
+          <li class="list-group-item d-flex align-items-center gap-2">
+            <span class="badge bg-warning text-dark">1</span> {{ t('points_1') }}
+          </li>
+          <li class="list-group-item d-flex align-items-center gap-2">
+            <span class="badge bg-danger">0</span> {{ t('points_0') }}
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
