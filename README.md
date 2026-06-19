@@ -1,3 +1,7 @@
+# Disclaimer
+**Dieses Repo wurde in Gänze KI-genriert und nicht auf Fehler oder sicherheitsrelevante Themen überprüft!**
+Erstellt mit Claude Code
+
 # WM 2026 Tippspiel
 
 Eine selbst gehostete Tippspiel-Webapp für die Fußball-Weltmeisterschaft 2026. Spielpaarungen und Ergebnisse werden automatisch über die [football-data.org](https://www.football-data.org/) API synchronisiert.
