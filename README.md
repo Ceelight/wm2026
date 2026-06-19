@@ -5,10 +5,14 @@ Eine selbst gehostete Tippspiel-Webapp für die Fußball-Weltmeisterschaft 2026.
 ## Features
 
 - Tipp-Abgabe bis zum Anpfiff jedes Spiels
+- **Weltmeister-Tipp**: Auswahl aus allen Teilnehmerländern, änderbar bis Ende der Gruppenphase
+- **Torschützenkönig-Tipp**: Freie Texteingabe, änderbar bis Ende der Gruppenphase, Auswertung durch Admin
 - Automatische Punkteberechnung nach Spielende
 - Rangliste mit geteilten Rängen bei Gleichstand
 - Gruppenphase-Vorschau (eigene Tipp-Tabelle)
-- Admin-UI: Spielverwaltung, Benutzerverwaltung, API-Token-Konfiguration
+- Nächstes Spiel / aktuell laufendes Spiel immer oben hervorgehoben
+- Datenschutz-Einstellung: Tipps können auf privat gestellt werden
+- Admin-UI: Spielverwaltung, Benutzerverwaltung, API-Token- und Torschützen-Konfiguration
 - Mehrsprachig: Deutsch, Englisch, Spanisch
 
 ## Punkteregeln
@@ -20,6 +24,8 @@ Eine selbst gehostete Tippspiel-Webapp für die Fußball-Weltmeisterschaft 2026.
 | Richtiger Sieger, gleiche Tordifferenz | 2 |
 | Richtiger Sieger | 1 |
 | Falscher Sieger | 0 |
+| Weltmeister richtig getippt | +10 |
+| Torschützenkönig richtig getippt | +10 |
 
 ## Voraussetzungen
 
@@ -72,6 +78,14 @@ Die App ist dann unter `http://localhost:8000` erreichbar.
 3. Den football-data.org API-Token eintragen und speichern
 4. Über **Admin → Spielverwaltung → API-Sync** die Spieldaten importieren
 
+### 6. Datenbankschema aktualisieren (nach Updates)
+
+Falls du von einer älteren Version aktualisierst und neue Spalten/Tabellen fehlen, führe folgendes einmalig aus:
+
+```bash
+python3 migrate.py
+```
+
 ## Als Systemdienst betreiben (systemd)
 
 Eine Beispiel-Unit-Datei liegt unter `wm2026.service`. Passe `User`, `WorkingDirectory` und die Umgebungsvariablen an:
@@ -91,6 +105,16 @@ sudo cp wm2026.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now wm2026
 ```
+
+## Admin-Funktionen
+
+### Torschützenkönig auswerten
+
+Nach Turnierende unter **Admin → Einstellungen** den offiziellen Torschützenkönig eintragen. Der Vergleich mit den Spieler-Tipps ist nicht case-sensitiv. Punkte werden sofort vergeben und sind in der Rangliste sichtbar.
+
+### Weltmeister
+
+Wird automatisch aus dem Finale-Ergebnis ermittelt, sobald das Spiel als „Beendet" markiert ist.
 
 ## Umgebungsvariablen im Überblick
 

@@ -13,7 +13,10 @@ class User(Base):
     role = Column(String(16), nullable=False, default="player")  # admin | player
     language = Column(String(4), nullable=False, default="de")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    tips_public = Column(Boolean, nullable=False, default=True)
     tips = relationship("Tip", back_populates="user")
+    champion_tip = relationship("ChampionTip", back_populates="user", uselist=False)
+    scorer_tip = relationship("TopScorerTip", back_populates="user", uselist=False)
 
 
 class Match(Base):
@@ -46,6 +49,24 @@ class Tip(Base):
                         onupdate=lambda: datetime.now(timezone.utc))
     user = relationship("User", back_populates="tips")
     match = relationship("Match", back_populates="tips")
+
+
+class ChampionTip(Base):
+    __tablename__ = "champion_tips"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    team = Column(String(64), nullable=False)
+    points = Column(Integer, default=0)
+    user = relationship("User", back_populates="champion_tip")
+
+
+class TopScorerTip(Base):
+    __tablename__ = "top_scorer_tips"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    player = Column(String(128), nullable=False)
+    points = Column(Integer, default=0)
+    user = relationship("User", back_populates="scorer_tip")
 
 
 class Setting(Base):

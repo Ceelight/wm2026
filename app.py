@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from api_sync import sync_and_recalc
 from database import get_db, init_db, SessionLocal
-from models import User, Match, Tip, Setting
+from models import User, Match, Tip, Setting, ChampionTip, TopScorerTip
 
 logging.basicConfig(level=logging.INFO)
 
@@ -109,6 +109,54 @@ def calc_points(tip1: int, tip2: int, score1: int, score2: int) -> int:
     return 1
 
 
+def group_phase_over(db: Session) -> bool:
+    """True sobald das erste KO-Spiel angepfiffen wurde."""
+    first_ko = (
+        db.query(Match)
+        .filter(~Match.round.startswith("Gruppe "))
+        .order_by(Match.kickoff_utc)
+        .first()
+    )
+    if first_ko is None:
+        return False
+    return datetime.utcnow() >= first_ko.kickoff_utc
+
+
+def get_champion(db: Session) -> Optional[str]:
+    """Gibt den Weltmeister zurück (Sieger des Finales), oder None."""
+    final = db.query(Match).filter_by(round="Finale").first()
+    if not final or final.status != "finished" or final.score1 is None:
+        return None
+    if final.score1 > final.score2:
+        return final.team1
+    if final.score2 > final.score1:
+        return final.team2
+    return None
+
+
+def award_champion_points(db: Session):
+    champion = get_champion(db)
+    if not champion:
+        return
+    for ct in db.query(ChampionTip).all():
+        ct.points = 10 if ct.team == champion else 0
+    db.commit()
+
+
+def get_top_scorer(db: Session) -> Optional[str]:
+    setting = db.query(Setting).filter_by(key="top_scorer").first()
+    return setting.value if setting and setting.value else None
+
+
+def award_scorer_points(db: Session):
+    scorer = get_top_scorer(db)
+    if not scorer:
+        return
+    for st in db.query(TopScorerTip).all():
+        st.points = 10 if st.player.strip().lower() == scorer.strip().lower() else 0
+    db.commit()
+
+
 def get_api_token(db: Session) -> str:
     setting = db.query(Setting).filter_by(key="api_token").first()
     return setting.value if setting else ""
@@ -122,6 +170,8 @@ def recalculate_all_points(db: Session):
         else:
             tip.points = 0
     db.commit()
+    award_champion_points(db)
+    award_scorer_points(db)
 
 
 # ---------------------------------------------------------------------------
@@ -233,12 +283,37 @@ async def dashboard(request: Request, db: Session = Depends(get_db),
             key=lambda t: (-t["pts"], -t["td"], -t["tore"], t["team"])
         )
 
+    # Nächstes Spiel (live oder nächstes anstehendes)
+    next_match = None
+    live = [m for m in matches if m.status == "live"]
+    if live:
+        next_match = live[0]
+    else:
+        upcoming = [m for m in matches if m.status == "scheduled" and m.kickoff_utc > now]
+        if upcoming:
+            next_match = upcoming[0]
+
+    # Weltmeister-Tipp
+    all_teams = sorted({t for m in matches for t in (m.team1, m.team2) if t != "TBD"})
+    champion_tip = db.query(ChampionTip).filter_by(user_id=user.id).first()
+    scorer_tip = db.query(TopScorerTip).filter_by(user_id=user.id).first()
+    gp_over = group_phase_over(db)
+    champion = get_champion(db)
+    top_scorer = get_top_scorer(db)
+
     return templates.TemplateResponse(request, "dashboard.html", base_ctx(user, {
         "matches": matches,
         "my_tips": my_tips,
         "rounds": rounds,
         "group_tables": group_tables,
         "now": now,
+        "next_match": next_match,
+        "all_teams": all_teams,
+        "champion_tip": champion_tip,
+        "scorer_tip": scorer_tip,
+        "group_phase_over": gp_over,
+        "champion": champion,
+        "top_scorer": top_scorer,
     }))
 
 
@@ -271,6 +346,42 @@ async def save_tip(match_id: int, tip_score1: Optional[int] = Form(None),
 
 
 # ---------------------------------------------------------------------------
+# Routes – Champion tip
+# ---------------------------------------------------------------------------
+@app.post("/scorer-tip")
+async def save_scorer_tip(player: str = Form(...), db: Session = Depends(get_db),
+                           user: User = Depends(require_user)):
+    if group_phase_over(db):
+        return Response("locked", status_code=403)
+    player = player.strip()
+    if not player:
+        return RedirectResponse("/", status_code=302)
+    st = db.query(TopScorerTip).filter_by(user_id=user.id).first()
+    if st:
+        st.player = player
+    else:
+        st = TopScorerTip(user_id=user.id, player=player)
+        db.add(st)
+    db.commit()
+    return RedirectResponse("/", status_code=302)
+
+
+@app.post("/champion-tip")
+async def save_champion_tip(team: str = Form(...), db: Session = Depends(get_db),
+                             user: User = Depends(require_user)):
+    if group_phase_over(db):
+        return Response("locked", status_code=403)
+    ct = db.query(ChampionTip).filter_by(user_id=user.id).first()
+    if ct:
+        ct.team = team
+    else:
+        ct = ChampionTip(user_id=user.id, team=team)
+        db.add(ct)
+    db.commit()
+    return RedirectResponse("/", status_code=302)
+
+
+# ---------------------------------------------------------------------------
 # Routes – Leaderboard
 # ---------------------------------------------------------------------------
 @app.get("/leaderboard", response_class=HTMLResponse)
@@ -281,6 +392,10 @@ async def leaderboard(request: Request, db: Session = Depends(get_db),
     board = []
     for u in all_users:
         total = sum(tip.points for tip in u.tips)
+        if u.champion_tip:
+            total += u.champion_tip.points
+        if u.scorer_tip:
+            total += u.scorer_tip.points
         board.append({"user": u, "total": total})
     board.sort(key=lambda x: x["total"], reverse=True)
 
@@ -305,6 +420,10 @@ async def view_user_tips(target_user_id: int, request: Request,
     target = db.query(User).get(target_user_id)
     if not target:
         raise HTTPException(404)
+    if not target.tips_public and target.id != user.id and user.role != "admin":
+        return templates.TemplateResponse(request, "tips_private.html", base_ctx(user, {
+            "target": target,
+        }))
     matches = db.query(Match).order_by(Match.kickoff_utc).all()
     their_tips = {tip.match_id: tip for tip in db.query(Tip).filter_by(user_id=target_user_id).all()}
     my_tips = {tip.match_id: tip for tip in db.query(Tip).filter_by(user_id=user.id).all()}
@@ -329,6 +448,7 @@ async def settings_page(request: Request, user: User = Depends(require_user),
 
 @app.post("/settings")
 async def save_settings(request: Request, language: str = Form(...),
+                        tips_public: str = Form("off"),
                         new_password: str = Form(""), confirm_password: str = Form(""),
                         user: User = Depends(require_user), db: Session = Depends(get_db)):
     lang = language if language in ("de", "en", "es") else "de"
@@ -343,6 +463,7 @@ async def save_settings(request: Request, language: str = Form(...),
             msg = t(lang, "settings_saved")
 
     user.language = lang
+    user.tips_public = (tips_public == "on")
     db.commit()
     if not msg and not error:
         msg = t(lang, "settings_saved")
@@ -483,23 +604,37 @@ async def admin_sync(user: User = Depends(require_admin)):
 async def admin_settings(request: Request, db: Session = Depends(get_db),
                          user: User = Depends(require_admin)):
     token = get_api_token(db)
+    top_scorer = get_top_scorer(db)
+    scorer_tips = db.query(TopScorerTip).all()
     return templates.TemplateResponse(request, "admin/settings.html", base_ctx(user, {
-        "api_token": token, "msg": None,
+        "api_token": token, "top_scorer": top_scorer,
+        "scorer_tips": scorer_tips, "msg": None,
     }))
 
 
 @app.post("/admin/settings")
 async def save_admin_settings(request: Request, api_token: str = Form(""),
+                               top_scorer: str = Form(""),
                                db: Session = Depends(get_db),
                                user: User = Depends(require_admin)):
-    setting = db.query(Setting).filter_by(key="api_token").first()
-    if setting:
-        setting.value = api_token.strip()
-    else:
-        db.add(Setting(key="api_token", value=api_token.strip()))
+    def upsert(key, val):
+        s = db.query(Setting).filter_by(key=key).first()
+        if s:
+            s.value = val
+        else:
+            db.add(Setting(key=key, value=val))
+
+    upsert("api_token", api_token.strip())
+    upsert("top_scorer", top_scorer.strip())
     db.commit()
+    if top_scorer.strip():
+        award_scorer_points(db)
+    scorer_tips = db.query(TopScorerTip).all()
     return templates.TemplateResponse(request, "admin/settings.html", base_ctx(user, {
-        "api_token": api_token.strip(), "msg": "Einstellungen gespeichert.",
+        "api_token": api_token.strip(),
+        "top_scorer": top_scorer.strip(),
+        "scorer_tips": scorer_tips,
+        "msg": "Einstellungen gespeichert.",
     }))
 
 
