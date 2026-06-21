@@ -349,13 +349,13 @@ async def save_tip(match_id: int, tip_score1: Optional[int] = Form(None),
 # Routes – Champion tip
 # ---------------------------------------------------------------------------
 @app.post("/scorer-tip")
-async def save_scorer_tip(player: str = Form(...), db: Session = Depends(get_db),
-                           user: User = Depends(require_user)):
+async def save_scorer_tip(player: str = Form(...), redirect: str = Form("/"),
+                           db: Session = Depends(get_db), user: User = Depends(require_user)):
     if group_phase_over(db):
         return Response("locked", status_code=403)
     player = player.strip()
     if not player:
-        return RedirectResponse("/", status_code=302)
+        return RedirectResponse(redirect, status_code=302)
     st = db.query(TopScorerTip).filter_by(user_id=user.id).first()
     if st:
         st.player = player
@@ -363,12 +363,12 @@ async def save_scorer_tip(player: str = Form(...), db: Session = Depends(get_db)
         st = TopScorerTip(user_id=user.id, player=player)
         db.add(st)
     db.commit()
-    return RedirectResponse("/", status_code=302)
+    return RedirectResponse(redirect, status_code=302)
 
 
 @app.post("/champion-tip")
-async def save_champion_tip(team: str = Form(...), db: Session = Depends(get_db),
-                             user: User = Depends(require_user)):
+async def save_champion_tip(team: str = Form(...), redirect: str = Form("/"),
+                             db: Session = Depends(get_db), user: User = Depends(require_user)):
     if group_phase_over(db):
         return Response("locked", status_code=403)
     ct = db.query(ChampionTip).filter_by(user_id=user.id).first()
@@ -378,7 +378,30 @@ async def save_champion_tip(team: str = Form(...), db: Session = Depends(get_db)
         ct = ChampionTip(user_id=user.id, team=team)
         db.add(ct)
     db.commit()
-    return RedirectResponse("/", status_code=302)
+    return RedirectResponse(redirect, status_code=302)
+
+
+# ---------------------------------------------------------------------------
+# Routes – Sondertipps
+# ---------------------------------------------------------------------------
+@app.get("/sondertipps", response_class=HTMLResponse)
+async def sondertipps(request: Request, db: Session = Depends(get_db),
+                      user: User = Depends(require_user)):
+    matches = db.query(Match).all()
+    all_teams = sorted({t for m in matches for t in (m.team1, m.team2) if t != "TBD"})
+    champion_tip = db.query(ChampionTip).filter_by(user_id=user.id).first()
+    scorer_tip = db.query(TopScorerTip).filter_by(user_id=user.id).first()
+    gp_over = group_phase_over(db)
+    champion = get_champion(db)
+    top_scorer = get_top_scorer(db)
+    return templates.TemplateResponse(request, "sondertipps.html", base_ctx(user, {
+        "all_teams": all_teams,
+        "champion_tip": champion_tip,
+        "scorer_tip": scorer_tip,
+        "group_phase_over": gp_over,
+        "champion": champion,
+        "top_scorer": top_scorer,
+    }))
 
 
 # ---------------------------------------------------------------------------
@@ -408,6 +431,37 @@ async def leaderboard(request: Request, db: Session = Depends(get_db),
 
     return templates.TemplateResponse(request, "leaderboard.html", base_ctx(user, {
         "board": board,
+    }))
+
+
+# ---------------------------------------------------------------------------
+# Routes – Match detail (all tips for one match)
+# ---------------------------------------------------------------------------
+@app.get("/match/{match_id}", response_class=HTMLResponse)
+async def match_detail(match_id: int, request: Request,
+                       db: Session = Depends(get_db), user: User = Depends(require_user)):
+    match = db.query(Match).get(match_id)
+    if not match:
+        raise HTTPException(404)
+    now = datetime.utcnow()
+    kickoff = match.kickoff_utc
+    locked = now >= kickoff and not match.tips_open
+
+    all_users = db.query(User).order_by(User.username).all()
+    tips_by_user = {t.user_id: t for t in db.query(Tip).filter_by(match_id=match_id).all()}
+    my_tip = tips_by_user.get(user.id)
+
+    rows = []
+    for u in all_users:
+        tip = tips_by_user.get(u.id)
+        visible = u.tips_public or u.id == user.id or user.role == "admin"
+        rows.append({"user": u, "tip": tip if visible else None, "hidden": not visible})
+
+    return templates.TemplateResponse(request, "match_detail.html", base_ctx(user, {
+        "match": match,
+        "rows": rows,
+        "my_tip": my_tip,
+        "locked": locked,
     }))
 
 

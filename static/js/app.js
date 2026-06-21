@@ -1,5 +1,10 @@
 // Tip forms – AJAX save
 document.addEventListener('DOMContentLoaded', () => {
+  // Prevent card navigation when clicking inside tip forms or buttons
+  document.querySelectorAll('.match-card input, .match-card button, .match-card select').forEach(el => {
+    el.addEventListener('click', e => e.stopPropagation());
+  });
+
   // Round filter
   const tabs = document.querySelectorAll('#roundTabs .nav-link');
   const cards = document.querySelectorAll('.match-card');

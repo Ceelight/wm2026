@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex align-items-center gap-3 mb-3">
+  <a href="/" class="btn btn-sm btn-outline-secondary">← Übersicht</a>
+  <h4 class="mb-0 fw-bold">{{ match.team1 }} vs {{ match.team2 }}</h4>
+</div>
+
+<div class="card mb-4">
+  <div class="card-body py-2 px-3">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <span class="text-muted small">{{ match.round }}</span>
+      <span class="text-muted small">{{ match.kickoff_utc|fmt_mesz }} MESZ</span>
+      {% if match.city %}<span class="text-muted small">{{ match.city }}</span>{% endif %}
+      {% if match.score1 is not none %}
+        <span class="badge bg-success fs-6">Ergebnis: {{ match.score1 }}:{{ match.score2 }}</span>
+      {% elif match.status == 'live' %}
+        <span class="badge bg-danger">🔴 Live</span>
+      {% else %}
+        <span class="badge bg-secondary">Ausstehend</span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Spieler</th>
+        <th class="text-center">Tipp</th>
+        {% if match.score1 is not none %}
+        <th class="text-center">Punkte</th>
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr {% if row.user.id == user.id %}class="table-warning fw-bold"{% endif %}>
+        <td>
+          {{ row.user.username }}
+          {% if row.user.id == user.id %}<span class="badge bg-warning text-dark ms-1">Du</span>{% endif %}
+        </td>
+        <td class="text-center">
+          {% if row.hidden %}
+            <span class="text-muted small fst-italic">🔒 privat</span>
+          {% elif not locked %}
+            <span class="text-muted small fst-italic">—</span>
+          {% elif row.tip and row.tip.tip_score1 is not none %}
+            <span class="fw-bold">{{ row.tip.tip_score1 }}:{{ row.tip.tip_score2 }}</span>
+          {% else %}
+            <span class="text-muted fst-italic">kein Tipp</span>
+          {% endif %}
+        </td>
+        {% if match.score1 is not none %}
+        <td class="text-center">
+          {% if row.hidden %}
+            —
+          {% elif row.tip and row.tip.tip_score1 is not none %}
+            <span class="badge
+              {% if row.tip.points == 3 %}bg-success
+              {% elif row.tip.points == 2 %}bg-primary
+              {% elif row.tip.points == 1 %}bg-warning text-dark
+              {% else %}bg-danger{% endif %}">
+              {{ row.tip.points }}
+            </span>
+          {% else %}
+            <span class="badge bg-danger">0</span>
+          {% endif %}
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if not locked %}
+<p class="text-muted small text-center">Tipps anderer Spieler werden erst nach Anpfiff sichtbar.</p>
+{% endif %}
+
+{% endblock %}

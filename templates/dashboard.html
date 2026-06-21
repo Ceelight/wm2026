@@ -6,108 +6,21 @@
   <span class="badge bg-secondary">{{ t('deadline_info') }}</span>
 </div>
 
-<!-- Weltmeister-Tipp -->
-<div class="card mb-4 border-warning">
-  <div class="card-header bg-warning text-dark fw-bold">🏆 Wer wird Weltmeister?</div>
-  <div class="card-body py-2 px-3">
-    {% if champion %}
-      <div class="d-flex align-items-center gap-3 flex-wrap">
-        <span class="fw-bold fs-5">🏆 {{ champion }}</span>
-        {% if champion_tip %}
-          {% if champion_tip.team == champion %}
-            <span class="badge bg-success fs-6">+10 Punkte</span>
-          {% else %}
-            <span class="text-muted small">Dein Tipp: {{ champion_tip.team }}</span>
-          {% endif %}
-        {% else %}
-          <span class="text-muted fst-italic small">Kein Tipp abgegeben</span>
-        {% endif %}
-      </div>
-    {% elif group_phase_over %}
-      <div class="d-flex align-items-center gap-3 flex-wrap">
-        {% if champion_tip %}
-          <span class="text-muted small">Dein Tipp: <strong>{{ champion_tip.team }}</strong></span>
-          <span class="badge bg-secondary">Tipp gesperrt</span>
-        {% else %}
-          <span class="text-muted fst-italic small">Kein Tipp abgegeben – Gruppenphase beendet</span>
-        {% endif %}
-      </div>
-    {% else %}
-      <form method="post" action="/champion-tip" class="d-flex align-items-center gap-2 flex-wrap">
-        <select name="team" class="form-select form-select-sm" style="max-width:220px">
-          <option value="" disabled {% if not champion_tip %}selected{% endif %}>Land wählen…</option>
-          {% for team in all_teams %}
-          <option value="{{ team }}" {% if champion_tip and champion_tip.team == team %}selected{% endif %}>{{ team }}</option>
-          {% endfor %}
-        </select>
-        <button type="submit" class="btn btn-warning btn-sm">✓ Speichern</button>
-        {% if champion_tip %}
-          <span class="text-muted small">Aktuell: <strong>{{ champion_tip.team }}</strong></span>
-        {% endif %}
-      </form>
-      <small class="text-muted d-block mt-1">Tipp kann bis zum Ende der Gruppenphase geändert werden. Richtiger Tipp = +10 Punkte.</small>
-    {% endif %}
-  </div>
-</div>
-
-<!-- Torschützenkönig-Tipp -->
-<div class="card mb-4 border-info">
-  <div class="card-header bg-info text-white fw-bold">⚽ Wer wird Torschützenkönig?</div>
-  <div class="card-body py-2 px-3">
-    {% if top_scorer %}
-      <div class="d-flex align-items-center gap-3 flex-wrap">
-        <span class="fw-bold fs-5">⚽ {{ top_scorer }}</span>
-        {% if scorer_tip %}
-          {% if scorer_tip.player.strip().lower() == top_scorer.strip().lower() %}
-            <span class="badge bg-success fs-6">+10 Punkte</span>
-          {% else %}
-            <span class="text-muted small">Dein Tipp: {{ scorer_tip.player }}</span>
-          {% endif %}
-        {% else %}
-          <span class="text-muted fst-italic small">Kein Tipp abgegeben</span>
-        {% endif %}
-      </div>
-    {% elif group_phase_over %}
-      <div class="d-flex align-items-center gap-3 flex-wrap">
-        {% if scorer_tip %}
-          <span class="text-muted small">Dein Tipp: <strong>{{ scorer_tip.player }}</strong></span>
-          <span class="badge bg-secondary">Tipp gesperrt</span>
-        {% else %}
-          <span class="text-muted fst-italic small">Kein Tipp abgegeben – Gruppenphase beendet</span>
-        {% endif %}
-      </div>
-    {% else %}
-      <form method="post" action="/scorer-tip" class="d-flex align-items-center gap-2 flex-wrap">
-        <input type="text" name="player" class="form-control form-control-sm" style="max-width:250px"
-          value="{{ scorer_tip.player if scorer_tip else '' }}"
-          placeholder="z. B. Lionel Messi" maxlength="100">
-        <button type="submit" class="btn btn-info btn-sm text-white">✓ Speichern</button>
-        {% if scorer_tip %}
-          <span class="text-muted small">Aktuell: <strong>{{ scorer_tip.player }}</strong></span>
-        {% endif %}
-      </form>
-      <small class="text-muted d-block mt-1">Bitte Vor- und Nachname eingeben (z. B. „Kylian Mbappé"). Tipp kann bis zum Ende der Gruppenphase geändert werden. Richtiger Tipp = +10 Punkte.</small>
-    {% endif %}
-  </div>
-</div>
-
-<!-- Nächstes Spiel -->
+<!-- Aktuelles / Nächstes Spiel -->
 {% if next_match %}
 {% set nm_tip = my_tips.get(next_match.id) %}
 {% set nm_kickoff = next_match.kickoff_utc %}
 {% set nm_locked = (now >= nm_kickoff) and not next_match.tips_open %}
 <div class="card mb-4 border-primary shadow-sm">
   <div class="card-header bg-primary text-white fw-bold d-flex justify-content-between align-items-center">
-    <span>{% if next_match.status == 'live' %}🔴 Jetzt live{% else %}⏭ Nächstes Spiel{% endif %}</span>
+    <span>{% if next_match.status == 'live' %}🔴 Aktuelles Spiel{% else %}⏭ Nächstes Spiel{% endif %}</span>
     <small class="fw-normal">{{ nm_kickoff|fmt_mesz }} MESZ · {{ next_match.round }}</small>
   </div>
   <div class="card-body py-3 px-3">
     <div class="row align-items-center g-3">
       <div class="col-12 col-md-5">
         <div class="d-flex align-items-center gap-2 flex-wrap">
-          <span class="fw-bold fs-5">{{ next_match.team1 }}</span>
-          <span class="text-muted">vs</span>
-          <span class="fw-bold fs-5">{{ next_match.team2 }}</span>
+          <a href="/match/{{ next_match.id }}" class="fw-bold fs-5 text-decoration-none text-dark">{{ next_match.team1 }} <span class="text-muted fw-normal">vs</span> {{ next_match.team2 }}</a>
           {% if next_match.score1 is not none %}
           <span class="badge bg-success ms-1 fs-6">{{ next_match.score1 }}:{{ next_match.score2 }}</span>
           {% elif nm_locked %}
@@ -225,8 +138,8 @@
 {% set kickoff = match.kickoff_utc %}
 {% set locked = (now >= kickoff) and not match.tips_open %}
 {% set has_result = match.score1 is not none %}
-{% set is_next = next_match and match.id == next_match.id %}
-<div class="match-card card mb-2 {% if has_result %}border-0 bg-light{% endif %}{% if is_next %} d-none{% endif %}" data-round="{{ match.round }}">
+{% set is_current = next_match and match.id == next_match.id %}
+<div class="match-card card mb-2 {% if has_result %}border-0 bg-light{% endif %}{% if is_current and next_match.status == 'live' %} border-danger{% elif is_current %} border-primary{% endif %}" data-round="{{ match.round }}">
   <div class="card-body py-2 px-3">
     <div class="row align-items-center g-2">
       <!-- Round + Date -->
@@ -237,9 +150,7 @@
       <!-- Teams + Result -->
       <div class="col-12 col-md-4">
         <div class="d-flex align-items-center gap-2 flex-wrap">
-          <span class="fw-bold">{{ match.team1 }}</span>
-          <span class="text-muted">vs</span>
-          <span class="fw-bold">{{ match.team2 }}</span>
+          <a href="/match/{{ match.id }}" class="fw-bold text-decoration-none text-dark">{{ match.team1 }} <span class="text-muted fw-normal">vs</span> {{ match.team2 }}</a>
           {% if has_result %}
           <span class="badge bg-success ms-1">{{ match.score1 }}:{{ match.score2 }}</span>
           {% elif locked %}

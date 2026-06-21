@@ -1,6 +1,4 @@
-# Disclaimer
-**Dieses Repo wurde in Gänze KI-genriert und nicht auf Fehler oder sicherheitsrelevante Themen überprüft!**
-Erstellt mit Claude Code
+> **Disclaimer:** Dieses Repo wurde vollständig mit KI ([Claude Code](https://claude.ai/code)) generiert und **nicht** auf Fehler oder sicherheitsrelevante Themen überprüft. Nicht ohne eigene Sicherheitsprüfung in produktiven oder öffentlich zugänglichen Umgebungen einsetzen.
 
 # WM 2026 Tippspiel
 
@@ -9,12 +7,12 @@ Eine selbst gehostete Tippspiel-Webapp für die Fußball-Weltmeisterschaft 2026.
 ## Features
 
 - Tipp-Abgabe bis zum Anpfiff jedes Spiels
-- **Weltmeister-Tipp**: Auswahl aus allen Teilnehmerländern, änderbar bis Ende der Gruppenphase
-- **Torschützenkönig-Tipp**: Freie Texteingabe, änderbar bis Ende der Gruppenphase, Auswertung durch Admin
+- **Sondertipps** (eigener Menüpunkt): Weltmeister und Torschützenkönig tippen, je +10 Punkte bei richtigem Tipp
 - Automatische Punkteberechnung nach Spielende
 - Rangliste mit geteilten Rängen bei Gleichstand
 - Gruppenphase-Vorschau (eigene Tipp-Tabelle)
-- Nächstes Spiel / aktuell laufendes Spiel immer oben hervorgehoben
+- Aktuell laufendes Spiel oben hervorgehoben, danach nächstes anstehendes Spiel
+- Detailansicht pro Spiel: alle Tipps der Mitspieler nach Anpfiff sichtbar
 - Datenschutz-Einstellung: Tipps können auf privat gestellt werden
 - Admin-UI: Spielverwaltung, Benutzerverwaltung, API-Token- und Torschützen-Konfiguration
 - Mehrsprachig: Deutsch, Englisch, Spanisch

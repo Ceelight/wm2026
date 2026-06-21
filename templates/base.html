@@ -24,6 +24,9 @@
         <li class="nav-item">
           <a class="nav-link {% if request.url.path == '/leaderboard' %}active{% endif %}" href="/leaderboard">{{ t('leaderboard') }}</a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.url.path == '/sondertipps' %}active{% endif %}" href="/sondertipps">🎯 Sondertipps</a>
+        </li>
         {% if user.role == 'admin' %}
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">{{ t('admin') }}</a>

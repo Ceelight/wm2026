@@ -4,11 +4,11 @@ After=network.target
 
 [Service]
 Type=simple
-User=claude
+User=YOUR_USER
 WorkingDirectory=/opt/wm2026
-Environment=PATH=/home/claude/.local/bin:/usr/local/bin:/usr/bin:/bin
-Environment=PYTHONPATH=/home/claude/.local/lib/python3.14/site-packages:/opt/wm2026
-ExecStart=/home/claude/.local/bin/uvicorn app:app --host 0.0.0.0 --port 8000
+Environment=PATH=/home/YOUR_USER/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=SECRET_KEY=change-me-to-a-random-secret
+ExecStart=/home/YOUR_USER/.local/bin/uvicorn app:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=5
 
