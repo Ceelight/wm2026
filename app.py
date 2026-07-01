@@ -91,7 +91,7 @@ def require_admin(request: Request, db: Session = Depends(get_db)) -> User:
 # Points calculation
 # ---------------------------------------------------------------------------
 def calc_points(tip1: int, tip2: int, score1: int, score2: int) -> int:
-    if score1 is None or score2 is None:
+    if score1 is None or score2 is None or tip1 is None or tip2 is None:
         return 0
     # Exact result
     if tip1 == score1 and tip2 == score2:
