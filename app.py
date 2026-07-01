@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from api_sync import sync_and_recalc
 from database import get_db, init_db, SessionLocal
-from models import User, Match, Tip, Setting, ChampionTip, TopScorerTip
+from models import User, Match, Tip, Setting, ChampionTip, TopScorerTip, Notification
 
 logging.basicConfig(level=logging.INFO)
 
@@ -109,6 +109,43 @@ def calc_points(tip1: int, tip2: int, score1: int, score2: int) -> int:
     return 1
 
 
+KO_ROUND_ORDER = [
+    "Sechzehntelfinale",
+    "Achtelfinale",
+    "Viertelfinale",
+    "Halbfinale",
+    "Spiel um Platz 3",
+    "Finale",
+]
+
+ROUND_LOCALE_KEYS = {
+    "Sechzehntelfinale": "round_of_32",
+    "Achtelfinale": "round_of_16",
+    "Viertelfinale": "quarterfinals",
+    "Halbfinale": "semifinals",
+    "Spiel um Platz 3": "third_place",
+    "Finale": "final",
+}
+
+
+def round_sort_key(r: str):
+    if r.startswith("Gruppe "):
+        return (0, r[-1])  # Gruppe A → (0, "A"), Gruppe B → (0, "B"), ...
+    if r in KO_ROUND_ORDER:
+        return (KO_ROUND_ORDER.index(r) + 1, "")
+    return (9, r)
+
+
+def translate_round(lang: str, round_str: str) -> str:
+    """Übersetzt einen in der DB gespeicherten Runden-String (z. B. 'Gruppe A', 'Achtelfinale')
+    in die Anzeigesprache des Users."""
+    if round_str.startswith("Gruppe "):
+        letter = round_str[len("Gruppe "):]
+        return f"{t(lang, 'group')} {letter}"
+    key = ROUND_LOCALE_KEYS.get(round_str)
+    return t(lang, key) if key else round_str
+
+
 def group_phase_over(db: Session) -> bool:
     """True sobald das erste KO-Spiel angepfiffen wurde."""
     first_ko = (
@@ -174,16 +211,37 @@ def recalculate_all_points(db: Session):
     award_scorer_points(db)
 
 
+def notify(db: Session, target_user: User, key: str, **kwargs):
+    """Legt eine Benachrichtigung an, die dem User beim nächsten Seitenaufruf angezeigt wird."""
+    msg = t(target_user.language, key).format(**kwargs)
+    db.add(Notification(user_id=target_user.id, message=msg))
+    db.commit()
+
+
 # ---------------------------------------------------------------------------
 # Template helper
 # ---------------------------------------------------------------------------
-def base_ctx(user: User, extra: dict = None) -> dict:
+def base_ctx(user: User, db: Session = None, extra: dict = None) -> dict:
     lang = user.language if user else "de"
+    notifications = []
+    if user and db:
+        notifications = (
+            db.query(Notification)
+            .filter_by(user_id=user.id, read=False)
+            .order_by(Notification.created_at)
+            .all()
+        )
+        if notifications:
+            for n in notifications:
+                n.read = True
+            db.commit()
     ctx = {
         "user": user,
         "lang": lang,
         "t": lambda key: t(lang, key),
+        "tr_round": lambda r: translate_round(lang, r),
         "now": datetime.utcnow(),
+        "notifications": notifications,
     }
     if extra:
         ctx.update(extra)
@@ -232,19 +290,6 @@ async def dashboard(request: Request, db: Session = Depends(get_db),
     matches = db.query(Match).order_by(Match.kickoff_utc).all()
     my_tips = {tip.match_id: tip for tip in db.query(Tip).filter_by(user_id=user.id).all()}
     now = datetime.utcnow()
-
-    # Group stage rounds for tab display
-    def round_sort_key(r):
-        if r.startswith("Gruppe "):
-            return (0, r[-1])  # Gruppe A → (0, "A"), Gruppe B → (0, "B"), ...
-        return ({
-            "Runde der 32":     (1, ""),
-            "Achtelfinale":     (2, ""),
-            "Viertelfinale":    (3, ""),
-            "Halbfinale":       (4, ""),
-            "Spiel um Platz 3": (5, ""),
-            "Finale":           (6, ""),
-        }.get(r, (9, r)))
 
     rounds = sorted(set(m.round for m in matches), key=round_sort_key)
 
@@ -301,7 +346,20 @@ async def dashboard(request: Request, db: Session = Depends(get_db),
     champion = get_champion(db)
     top_scorer = get_top_scorer(db)
 
-    return templates.TemplateResponse(request, "dashboard.html", base_ctx(user, {
+    # Nach der Gruppenphase: standardmäßig nur die aktuelle KO-Runde anzeigen.
+    # Alte Runden bleiben über die Runden-Auswahl weiterhin einsehbar.
+    default_round = "all"
+    if gp_over:
+        ko_rounds = [r for r in rounds if not r.startswith("Gruppe ")]
+        if ko_rounds:
+            default_round = ko_rounds[-1]
+            for r in ko_rounds:
+                round_matches = [m for m in matches if m.round == r]
+                if any(m.status != "finished" for m in round_matches):
+                    default_round = r
+                    break
+
+    return templates.TemplateResponse(request, "dashboard.html", base_ctx(user, db, {
         "matches": matches,
         "my_tips": my_tips,
         "rounds": rounds,
@@ -314,6 +372,7 @@ async def dashboard(request: Request, db: Session = Depends(get_db),
         "group_phase_over": gp_over,
         "champion": champion,
         "top_scorer": top_scorer,
+        "default_round": default_round,
     }))
 
 
@@ -394,7 +453,7 @@ async def sondertipps(request: Request, db: Session = Depends(get_db),
     gp_over = group_phase_over(db)
     champion = get_champion(db)
     top_scorer = get_top_scorer(db)
-    return templates.TemplateResponse(request, "sondertipps.html", base_ctx(user, {
+    return templates.TemplateResponse(request, "sondertipps.html", base_ctx(user, db, {
         "all_teams": all_teams,
         "champion_tip": champion_tip,
         "scorer_tip": scorer_tip,
@@ -429,7 +488,7 @@ async def leaderboard(request: Request, db: Session = Depends(get_db),
         else:
             entry["rank"] = board[i - 1]["rank"]
 
-    return templates.TemplateResponse(request, "leaderboard.html", base_ctx(user, {
+    return templates.TemplateResponse(request, "leaderboard.html", base_ctx(user, db, {
         "board": board,
     }))
 
@@ -457,12 +516,86 @@ async def match_detail(match_id: int, request: Request,
         visible = u.tips_public or u.id == user.id or user.role == "admin"
         rows.append({"user": u, "tip": tip if visible else None, "hidden": not visible})
 
-    return templates.TemplateResponse(request, "match_detail.html", base_ctx(user, {
+    return templates.TemplateResponse(request, "match_detail.html", base_ctx(user, db, {
         "match": match,
         "rows": rows,
         "my_tip": my_tip,
         "locked": locked,
     }))
+
+
+# ---------------------------------------------------------------------------
+# Routes – Admin: Tipps aller Spieler nachträglich ändern
+# ---------------------------------------------------------------------------
+@app.post("/admin/tip/{match_id}/{target_user_id}")
+async def admin_edit_tip(match_id: int, target_user_id: int,
+                         tip_score1: Optional[int] = Form(None),
+                         tip_score2: Optional[int] = Form(None),
+                         db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    match = db.query(Match).get(match_id)
+    target = db.query(User).get(target_user_id)
+    if not match or not target:
+        raise HTTPException(404)
+
+    tip = db.query(Tip).filter_by(user_id=target_user_id, match_id=match_id).first()
+    if tip is None:
+        tip = Tip(user_id=target_user_id, match_id=match_id)
+        db.add(tip)
+    tip.tip_score1 = tip_score1
+    tip.tip_score2 = tip_score2
+    tip.updated_at = datetime.utcnow()
+    if match.status == "finished" and match.score1 is not None and tip_score1 is not None and tip_score2 is not None:
+        tip.points = calc_points(tip_score1, tip_score2, match.score1, match.score2)
+    else:
+        tip.points = 0
+    db.commit()
+
+    notify(db, target, "notify_tip_changed", match=f"{match.team1} vs {match.team2}")
+    return RedirectResponse(f"/match/{match_id}", status_code=302)
+
+
+@app.post("/admin/champion-tip/{target_user_id}")
+async def admin_edit_champion_tip(target_user_id: int, team: str = Form(""),
+                                   db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    target = db.query(User).get(target_user_id)
+    if not target:
+        raise HTTPException(404)
+    team = team.strip()
+    if not team:
+        return RedirectResponse("/admin/settings", status_code=302)
+    ct = db.query(ChampionTip).filter_by(user_id=target_user_id).first()
+    if ct:
+        ct.team = team
+    else:
+        ct = ChampionTip(user_id=target_user_id, team=team)
+        db.add(ct)
+    db.commit()
+    award_champion_points(db)
+
+    notify(db, target, "notify_champion_changed")
+    return RedirectResponse("/admin/settings", status_code=302)
+
+
+@app.post("/admin/scorer-tip/{target_user_id}")
+async def admin_edit_scorer_tip(target_user_id: int, player: str = Form(""),
+                                db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    target = db.query(User).get(target_user_id)
+    if not target:
+        raise HTTPException(404)
+    player = player.strip()
+    if not player:
+        return RedirectResponse("/admin/settings", status_code=302)
+    st = db.query(TopScorerTip).filter_by(user_id=target_user_id).first()
+    if st:
+        st.player = player
+    else:
+        st = TopScorerTip(user_id=target_user_id, player=player)
+        db.add(st)
+    db.commit()
+    award_scorer_points(db)
+
+    notify(db, target, "notify_scorer_changed")
+    return RedirectResponse("/admin/settings", status_code=302)
 
 
 # ---------------------------------------------------------------------------
@@ -475,14 +608,14 @@ async def view_user_tips(target_user_id: int, request: Request,
     if not target:
         raise HTTPException(404)
     if not target.tips_public and target.id != user.id and user.role != "admin":
-        return templates.TemplateResponse(request, "tips_private.html", base_ctx(user, {
+        return templates.TemplateResponse(request, "tips_private.html", base_ctx(user, db, {
             "target": target,
         }))
     matches = db.query(Match).order_by(Match.kickoff_utc).all()
     their_tips = {tip.match_id: tip for tip in db.query(Tip).filter_by(user_id=target_user_id).all()}
     my_tips = {tip.match_id: tip for tip in db.query(Tip).filter_by(user_id=user.id).all()}
     now = datetime.utcnow()
-    return templates.TemplateResponse(request, "other_tips.html", base_ctx(user, {
+    return templates.TemplateResponse(request, "other_tips.html", base_ctx(user, db, {
         "target": target,
         "matches": matches,
         "their_tips": their_tips,
@@ -497,7 +630,7 @@ async def view_user_tips(target_user_id: int, request: Request,
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request, user: User = Depends(require_user),
                          db: Session = Depends(get_db)):
-    return templates.TemplateResponse(request, "settings.html", base_ctx(user, {"msg": None, "error": None}))
+    return templates.TemplateResponse(request, "settings.html", base_ctx(user, db, {"msg": None, "error": None}))
 
 
 @app.post("/settings")
@@ -522,7 +655,7 @@ async def save_settings(request: Request, language: str = Form(...),
     if not msg and not error:
         msg = t(lang, "settings_saved")
 
-    return templates.TemplateResponse(request, "settings.html", base_ctx(user, {
+    return templates.TemplateResponse(request, "settings.html", base_ctx(user, db, {
         "msg": msg, "error": error,
     }))
 
@@ -534,7 +667,7 @@ async def save_settings(request: Request, language: str = Form(...),
 async def admin_users(request: Request, db: Session = Depends(get_db),
                       user: User = Depends(require_admin)):
     users = db.query(User).order_by(User.username).all()
-    return templates.TemplateResponse(request, "admin/users.html", base_ctx(user, {
+    return templates.TemplateResponse(request, "admin/users.html", base_ctx(user, db, {
         "users": users, "msg": None, "error": None,
     }))
 
@@ -547,7 +680,7 @@ async def create_user(request: Request, username: str = Form(...), password: str
     lang = user.language
 
     if db.query(User).filter_by(username=username).first():
-        return templates.TemplateResponse(request, "admin/users.html", base_ctx(user, {
+        return templates.TemplateResponse(request, "admin/users.html", base_ctx(user, db, {
             "users": users,
             "msg": None,
             "error": t(lang, "username_taken"),
@@ -558,7 +691,7 @@ async def create_user(request: Request, username: str = Form(...), password: str
     db.add(new_user)
     db.commit()
     users = db.query(User).order_by(User.username).all()
-    return templates.TemplateResponse(request, "admin/users.html", base_ctx(user, {
+    return templates.TemplateResponse(request, "admin/users.html", base_ctx(user, db, {
         "users": users,
         "msg": t(lang, "user_created"),
         "error": None,
@@ -591,8 +724,13 @@ async def reset_password(target_id: int, new_password: str = Form(...),
 @app.get("/admin/matches", response_class=HTMLResponse)
 async def admin_matches(request: Request, db: Session = Depends(get_db),
                         user: User = Depends(require_admin)):
-    matches = db.query(Match).order_by(Match.match_number).all()
-    return templates.TemplateResponse(request, "admin/matches.html", base_ctx(user, {
+    # Nach Gruppe/Runde gruppiert, innerhalb der Runde chronologisch sortiert
+    # (statt nach Anstoßzeit, da Gruppenspiele terminlich verschachtelt sind).
+    matches = sorted(
+        db.query(Match).all(),
+        key=lambda m: (round_sort_key(m.round), m.kickoff_utc),
+    )
+    return templates.TemplateResponse(request, "admin/matches.html", base_ctx(user, db, {
         "matches": matches, "msg": None,
     }))
 
@@ -654,15 +792,29 @@ async def admin_sync(user: User = Depends(require_admin)):
 # ---------------------------------------------------------------------------
 # Routes – Admin: Settings
 # ---------------------------------------------------------------------------
+def build_sondertipp_rows(db: Session):
+    """Baut für alle User je eine Zeile für Weltmeister- und Torschützenkönig-Tipp,
+    auch wenn noch kein Tipp abgegeben wurde (damit Admin ihn nachtragen kann)."""
+    all_users = db.query(User).order_by(User.username).all()
+    champion_by_user = {ct.user_id: ct for ct in db.query(ChampionTip).all()}
+    scorer_by_user = {st.user_id: st for st in db.query(TopScorerTip).all()}
+    champion_rows = [{"user": u, "tip": champion_by_user.get(u.id)} for u in all_users]
+    scorer_rows = [{"user": u, "tip": scorer_by_user.get(u.id)} for u in all_users]
+    return champion_rows, scorer_rows
+
+
 @app.get("/admin/settings", response_class=HTMLResponse)
 async def admin_settings(request: Request, db: Session = Depends(get_db),
                          user: User = Depends(require_admin)):
     token = get_api_token(db)
     top_scorer = get_top_scorer(db)
-    scorer_tips = db.query(TopScorerTip).all()
-    return templates.TemplateResponse(request, "admin/settings.html", base_ctx(user, {
+    champion_rows, scorer_rows = build_sondertipp_rows(db)
+    matches = db.query(Match).all()
+    all_teams = sorted({t for m in matches for t in (m.team1, m.team2) if t != "TBD"})
+    return templates.TemplateResponse(request, "admin/settings.html", base_ctx(user, db, {
         "api_token": token, "top_scorer": top_scorer,
-        "scorer_tips": scorer_tips, "msg": None,
+        "scorer_rows": scorer_rows, "champion_rows": champion_rows,
+        "all_teams": all_teams, "msg": None,
     }))
 
 
@@ -683,12 +835,16 @@ async def save_admin_settings(request: Request, api_token: str = Form(""),
     db.commit()
     if top_scorer.strip():
         award_scorer_points(db)
-    scorer_tips = db.query(TopScorerTip).all()
-    return templates.TemplateResponse(request, "admin/settings.html", base_ctx(user, {
+    champion_rows, scorer_rows = build_sondertipp_rows(db)
+    matches = db.query(Match).all()
+    all_teams = sorted({t for m in matches for t in (m.team1, m.team2) if t != "TBD"})
+    return templates.TemplateResponse(request, "admin/settings.html", base_ctx(user, db, {
         "api_token": api_token.strip(),
         "top_scorer": top_scorer.strip(),
-        "scorer_tips": scorer_tips,
-        "msg": "Einstellungen gespeichert.",
+        "scorer_rows": scorer_rows,
+        "champion_rows": champion_rows,
+        "all_teams": all_teams,
+        "msg": t(user.language, "settings_saved"),
     }))
 
 

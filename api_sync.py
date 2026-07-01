@@ -65,7 +65,7 @@ TEAM_NAMES = {
 
 STAGE_NAMES = {
     "GROUP_STAGE": None,   # handled separately using group letter
-    "LAST_32": "Runde der 32",
+    "LAST_32": "Sechzehntelfinale",
     "LAST_16": "Achtelfinale",
     "QUARTER_FINALS": "Viertelfinale",
     "SEMI_FINALS": "Halbfinale",

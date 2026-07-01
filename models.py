@@ -73,3 +73,13 @@ class Setting(Base):
     __tablename__ = "settings"
     key = Column(String(64), primary_key=True)
     value = Column(String(512), nullable=False, default="")
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    message = Column(String(256), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    read = Column(Boolean, nullable=False, default=False)
+    user = relationship("User")

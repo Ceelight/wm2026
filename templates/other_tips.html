@@ -17,8 +17,8 @@
   <div class="card-body py-2 px-3">
     <div class="row align-items-center g-2">
       <div class="col-12 col-md-2">
-        <small class="text-muted d-block">{{ match.round }}</small>
-        <small class="text-muted">{{ kickoff|fmt_mesz }} MESZ</small>
+        <small class="text-muted d-block">{{ tr_round(match.round) }}</small>
+        <small class="text-muted">{{ kickoff|fmt_mesz }} {{ t('timezone_abbr') }}</small>
       </div>
       <div class="col-12 col-md-3">
         <span class="fw-bold">{{ match.team1 }}</span>

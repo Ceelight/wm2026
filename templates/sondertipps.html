@@ -2,80 +2,80 @@
 {% block content %}
 
 <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
-  <h4 class="mb-0 fw-bold">🎯 Sondertipps</h4>
+  <h4 class="mb-0 fw-bold">🎯 {{ t('sondertipps_title') }}</h4>
 </div>
 
-<p class="text-muted mb-4">Richtige Sondertipps geben je <strong>+10 Punkte</strong>. Tipps können bis zum Ende der Gruppenphase geändert werden.</p>
+<p class="text-muted mb-4">{{ t('sondertipps_intro') }}</p>
 
 <!-- Weltmeister-Tipp -->
 <div class="card mb-4 border-warning">
-  <div class="card-header bg-warning text-dark fw-bold">🏆 Wer wird Weltmeister?</div>
+  <div class="card-header bg-warning text-dark fw-bold">🏆 {{ t('champion_card_title') }}</div>
   <div class="card-body py-3 px-3">
     {% if champion %}
       <div class="d-flex align-items-center gap-3 flex-wrap">
         <span class="fw-bold fs-5">🏆 {{ champion }}</span>
         {% if champion_tip %}
           {% if champion_tip.team == champion %}
-            <span class="badge bg-success fs-6">+10 Punkte</span>
+            <span class="badge bg-success fs-6">+10 {{ t('points') }}</span>
           {% else %}
-            <span class="text-muted small">Dein Tipp: {{ champion_tip.team }}</span>
+            <span class="text-muted small">{{ t('your_tip') }}: {{ champion_tip.team }}</span>
           {% endif %}
         {% else %}
-          <span class="text-muted fst-italic small">Kein Tipp abgegeben</span>
+          <span class="text-muted fst-italic small">{{ t('no_tip_submitted') }}</span>
         {% endif %}
       </div>
     {% elif group_phase_over %}
       <div class="d-flex align-items-center gap-3 flex-wrap">
         {% if champion_tip %}
-          <span class="text-muted small">Dein Tipp: <strong>{{ champion_tip.team }}</strong></span>
-          <span class="badge bg-secondary">Tipp gesperrt</span>
+          <span class="text-muted small">{{ t('your_tip') }}: <strong>{{ champion_tip.team }}</strong></span>
+          <span class="badge bg-secondary">{{ t('tip_locked_badge') }}</span>
         {% else %}
-          <span class="text-muted fst-italic small">Kein Tipp abgegeben – Gruppenphase beendet</span>
+          <span class="text-muted fst-italic small">{{ t('no_tip_group_stage_over') }}</span>
         {% endif %}
       </div>
     {% else %}
       <form method="post" action="/champion-tip" class="d-flex align-items-center gap-2 flex-wrap">
         <input type="hidden" name="redirect" value="/sondertipps">
         <select name="team" class="form-select form-select-sm" style="max-width:220px">
-          <option value="" disabled {% if not champion_tip %}selected{% endif %}>Land wählen…</option>
+          <option value="" disabled {% if not champion_tip %}selected{% endif %}>{{ t('select_country_placeholder') }}</option>
           {% for team in all_teams %}
           <option value="{{ team }}" {% if champion_tip and champion_tip.team == team %}selected{% endif %}>{{ team }}</option>
           {% endfor %}
         </select>
-        <button type="submit" class="btn btn-warning btn-sm">✓ Speichern</button>
+        <button type="submit" class="btn btn-warning btn-sm">✓ {{ t('save') }}</button>
         {% if champion_tip %}
-          <span class="text-muted small">Aktuell: <strong>{{ champion_tip.team }}</strong></span>
+          <span class="text-muted small">{{ t('current_label') }} <strong>{{ champion_tip.team }}</strong></span>
         {% endif %}
       </form>
-      <small class="text-muted d-block mt-2">Tipp kann bis zum Ende der Gruppenphase geändert werden. Richtiger Tipp = +10 Punkte.</small>
+      <small class="text-muted d-block mt-2">{{ t('champion_tip_hint') }}</small>
     {% endif %}
   </div>
 </div>
 
 <!-- Torschützenkönig-Tipp -->
 <div class="card mb-4 border-info">
-  <div class="card-header bg-info text-white fw-bold">⚽ Wer wird Torschützenkönig?</div>
+  <div class="card-header bg-info text-white fw-bold">⚽ {{ t('scorer_card_title') }}</div>
   <div class="card-body py-3 px-3">
     {% if top_scorer %}
       <div class="d-flex align-items-center gap-3 flex-wrap">
         <span class="fw-bold fs-5">⚽ {{ top_scorer }}</span>
         {% if scorer_tip %}
           {% if scorer_tip.player.strip().lower() == top_scorer.strip().lower() %}
-            <span class="badge bg-success fs-6">+10 Punkte</span>
+            <span class="badge bg-success fs-6">+10 {{ t('points') }}</span>
           {% else %}
-            <span class="text-muted small">Dein Tipp: {{ scorer_tip.player }}</span>
+            <span class="text-muted small">{{ t('your_tip') }}: {{ scorer_tip.player }}</span>
           {% endif %}
         {% else %}
-          <span class="text-muted fst-italic small">Kein Tipp abgegeben</span>
+          <span class="text-muted fst-italic small">{{ t('no_tip_submitted') }}</span>
         {% endif %}
       </div>
     {% elif group_phase_over %}
       <div class="d-flex align-items-center gap-3 flex-wrap">
         {% if scorer_tip %}
-          <span class="text-muted small">Dein Tipp: <strong>{{ scorer_tip.player }}</strong></span>
-          <span class="badge bg-secondary">Tipp gesperrt</span>
+          <span class="text-muted small">{{ t('your_tip') }}: <strong>{{ scorer_tip.player }}</strong></span>
+          <span class="badge bg-secondary">{{ t('tip_locked_badge') }}</span>
         {% else %}
-          <span class="text-muted fst-italic small">Kein Tipp abgegeben – Gruppenphase beendet</span>
+          <span class="text-muted fst-italic small">{{ t('no_tip_group_stage_over') }}</span>
         {% endif %}
       </div>
     {% else %}
@@ -83,13 +83,13 @@
         <input type="hidden" name="redirect" value="/sondertipps">
         <input type="text" name="player" class="form-control form-control-sm" style="max-width:250px"
           value="{{ scorer_tip.player if scorer_tip else '' }}"
-          placeholder="z. B. Lionel Messi" maxlength="100">
-        <button type="submit" class="btn btn-info btn-sm text-white">✓ Speichern</button>
+          placeholder="{{ t('player_name_placeholder') }}" maxlength="100">
+        <button type="submit" class="btn btn-info btn-sm text-white">✓ {{ t('save') }}</button>
         {% if scorer_tip %}
-          <span class="text-muted small">Aktuell: <strong>{{ scorer_tip.player }}</strong></span>
+          <span class="text-muted small">{{ t('current_label') }} <strong>{{ scorer_tip.player }}</strong></span>
         {% endif %}
       </form>
-      <small class="text-muted d-block mt-2">Bitte Vor- und Nachname eingeben (z. B. „Kylian Mbappé"). Tipp kann bis zum Ende der Gruppenphase geändert werden. Richtiger Tipp = +10 Punkte.</small>
+      <small class="text-muted d-block mt-2">{{ t('scorer_tip_hint') }}</small>
     {% endif %}
   </div>
 </div>

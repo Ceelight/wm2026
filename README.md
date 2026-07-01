@@ -12,9 +12,11 @@ Eine selbst gehostete Tippspiel-Webapp für die Fußball-Weltmeisterschaft 2026.
 - Rangliste mit geteilten Rängen bei Gleichstand
 - Gruppenphase-Vorschau (eigene Tipp-Tabelle)
 - Aktuell laufendes Spiel oben hervorgehoben, danach nächstes anstehendes Spiel
+- Nach der Gruppenphase zeigt die Übersicht standardmäßig nur die aktuelle K.-o.-Runde; ältere Runden bleiben über die Runden-Auswahl weiterhin einsehbar
 - Detailansicht pro Spiel: alle Tipps der Mitspieler nach Anpfiff sichtbar
 - Datenschutz-Einstellung: Tipps können auf privat gestellt werden
 - Admin-UI: Spielverwaltung, Benutzerverwaltung, API-Token- und Torschützen-Konfiguration
+- Admins können Tipps (inkl. Sondertipps) aller Spieler nachträglich ändern; betroffene Spieler werden beim nächsten Seitenaufruf per Hinweis informiert
 - Mehrsprachig: Deutsch, Englisch, Spanisch
 
 ## Punkteregeln
@@ -117,6 +119,15 @@ Nach Turnierende unter **Admin → Einstellungen** den offiziellen Torschützenk
 ### Weltmeister
 
 Wird automatisch aus dem Finale-Ergebnis ermittelt, sobald das Spiel als „Beendet" markiert ist.
+
+### Tipps nachträglich ändern
+
+Admins können jeden Tipp jedes Spielers nachträglich korrigieren:
+
+- **Spieltipps**: auf der Detailseite eines Spiels (`/match/{id}`) lässt sich der Tipp jedes Spielers direkt bearbeiten.
+- **Weltmeister- und Torschützenkönig-Tipps**: unter **Admin → Einstellungen** editierbar, auch nach Ende der Gruppenphase.
+
+Der betroffene Spieler erhält beim nächsten Seitenaufruf einen Hinweis-Banner, dass sein Tipp durch einen Admin geändert wurde.
 
 ## Umgebungsvariablen im Überblick
 

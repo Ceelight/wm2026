@@ -26,7 +26,7 @@
   <h2 class="accordion-header">
     <button class="accordion-button {% if not loop.first %}collapsed{% endif %} fw-semibold"
       type="button" data-bs-toggle="collapse" data-bs-target="#round-{{ loop.index }}">
-      {{ match.round }}
+      {{ tr_round(match.round) }}
     </button>
   </h2>
   <div id="round-{{ loop.index }}" class="accordion-collapse collapse {% if not loop.first %}{% else %}show{% endif %}"
@@ -37,7 +37,7 @@
 <div class="border-bottom p-3">
   <div class="row g-2 align-items-center">
     <div class="col-12 col-md-1 text-muted small">#{{ match.match_number }}</div>
-    <div class="col-12 col-md-2 small text-muted">{{ match.kickoff_utc|fmt_mesz }} MESZ</div>
+    <div class="col-12 col-md-2 small text-muted">{{ match.kickoff_utc|fmt_mesz }} {{ t('timezone_abbr') }}</div>
     <div class="col-12 col-md-3">
       <span class="fw-bold">{{ match.team1 }}</span>
       <span class="text-muted mx-1">vs</span>
@@ -53,28 +53,29 @@
         <input type="number" name="score2" min="0" max="30" class="form-control form-control-sm"
           style="width:55px" value="{{ match.score2 if match.score2 is not none else '' }}" placeholder="0">
         <select name="status" class="form-select form-select-sm" style="width:auto">
-          <option value="scheduled" {% if match.status == 'scheduled' %}selected{% endif %}>Geplant</option>
-          <option value="live" {% if match.status == 'live' %}selected{% endif %}>Live</option>
-          <option value="finished" {% if match.status == 'finished' %}selected{% endif %}>Beendet</option>
+          <option value="scheduled" {% if match.status == 'scheduled' %}selected{% endif %}>{{ t('status_scheduled') }}</option>
+          <option value="live" {% if match.status == 'live' %}selected{% endif %}>{{ t('status_live') }}</option>
+          <option value="finished" {% if match.status == 'finished' %}selected{% endif %}>{{ t('status_finished') }}</option>
         </select>
         <button class="btn btn-sm btn-success">✓</button>
       </form>
       <!-- Nachtrag-Toggle -->
       <form method="post" action="/admin/matches/{{ match.id }}/toggle-tips" class="d-inline mt-1">
-        <button class="btn btn-sm {% if match.tips_open %}btn-warning{% else %}btn-outline-secondary{% endif %}" title="Nachtragen erlauben">
-          {{ '🔓 Nachtrag' if match.tips_open else '🔒' }}
+        <button class="btn btn-sm {% if match.tips_open %}btn-warning{% else %}btn-outline-secondary{% endif %}" title="{{ t('allow_late_tips_title') }}">
+          {{ '🔓 ' + t('late_tips_open') if match.tips_open else '🔒' }}
         </button>
       </form>
       <!-- KO teams update (only for TBD matches) -->
       {% if match.team1 == 'TBD' or match.team2 == 'TBD' %}
       <form method="post" action="/admin/matches/{{ match.id }}/teams" class="d-flex gap-1 mt-1 flex-wrap">
         <input type="text" name="team1" class="form-control form-control-sm" style="width:120px"
-          value="{{ match.team1 }}" placeholder="Team 1">
+          value="{{ match.team1 }}" placeholder="{{ t('team_1_placeholder') }}">
         <input type="text" name="team2" class="form-control form-control-sm" style="width:120px"
-          value="{{ match.team2 }}" placeholder="Team 2">
-        <button class="btn btn-sm btn-outline-primary">Teams setzen</button>
+          value="{{ match.team2 }}" placeholder="{{ t('team_2_placeholder') }}">
+        <button class="btn btn-sm btn-outline-primary">{{ t('set_teams') }}</button>
       </form>
       {% endif %}
+      <a href="/match/{{ match.id }}" class="btn btn-sm btn-outline-secondary mt-1">🎯 {{ t('edit_tips_button') }}</a>
     </div>
   </div>
 </div>

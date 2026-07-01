@@ -50,7 +50,7 @@
         <th>{{ t('role') }}</th>
         <th>{{ t('language') }}</th>
         <th>{{ t('total_points') }}</th>
-        <th>Passwort reset</th>
+        <th>{{ t('password_reset') }}</th>
         <th></th>
       </tr>
     </thead>
@@ -58,7 +58,7 @@
       {% for u in users %}
       <tr>
         <td class="fw-semibold">{{ u.username }}
-          {% if u.id == user.id %}<span class="badge bg-warning text-dark ms-1">Du</span>{% endif %}
+          {% if u.id == user.id %}<span class="badge bg-warning text-dark ms-1">{{ t('you') }}</span>{% endif %}
         </td>
         <td>
           <span class="badge {% if u.role == 'admin' %}bg-danger{% else %}bg-primary{% endif %}">
@@ -69,7 +69,7 @@
         <td class="fw-bold text-success">{{ u.tips | map(attribute='points') | sum }}</td>
         <td>
           <form method="post" action="/admin/users/{{ u.id }}/reset-password" class="d-flex gap-1">
-            <input type="password" name="new_password" class="form-control form-control-sm" placeholder="Neues PW" style="width:120px" required>
+            <input type="password" name="new_password" class="form-control form-control-sm" placeholder="{{ t('new_password') }}" style="width:120px" required>
             <button class="btn btn-sm btn-outline-warning">↺</button>
           </form>
         </td>

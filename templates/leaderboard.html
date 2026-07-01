@@ -25,13 +25,13 @@
         <td>
           <a href="/tips/{{ entry.user.id }}" class="text-decoration-none text-dark">
             {{ entry.user.username }}
-            {% if entry.user.id == user.id %}<span class="badge bg-warning text-dark ms-1">Du</span>{% endif %}
+            {% if entry.user.id == user.id %}<span class="badge bg-warning text-dark ms-1">{{ t('you') }}</span>{% endif %}
           </a>
         </td>
         <td class="text-end fs-5 fw-bold text-success">{{ entry.total }}</td>
         <td class="text-end d-none d-md-table-cell">
           <a href="/tips/{{ entry.user.id }}" class="btn btn-sm btn-outline-secondary">
-            Tipps von {{ entry.user.username }} →
+            {{ t('tip_other_user') }} {{ entry.user.username }} →
           </a>
         </td>
       </tr>

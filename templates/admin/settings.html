@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h4 class="fw-bold mb-3">⚙️ Admin-Einstellungen</h4>
+<h4 class="fw-bold mb-3">⚙️ {{ t('admin_settings_title') }}</h4>
 
 {% if msg %}
 <div class="alert alert-success">{{ msg }}</div>
@@ -12,61 +12,91 @@
     <div class="card-header fw-semibold">🌐 football-data.org API</div>
     <div class="card-body">
       <p class="text-muted small mb-3">
-        API-Token von <a href="https://www.football-data.org/" target="_blank" rel="noopener">football-data.org</a>.
-        Wird für den automatischen Import aller Spielpaarungen und Ergebnisse benötigt.
+        {{ t('api_token_intro_pre') }} <a href="https://www.football-data.org/" target="_blank" rel="noopener">football-data.org</a>.
+        {{ t('api_token_intro_post') }}
       </p>
       <div class="mb-3">
-        <label class="form-label fw-semibold">API-Token</label>
+        <label class="form-label fw-semibold">{{ t('api_token_label') }}</label>
         <input type="password" name="api_token" class="form-control font-monospace"
-               value="{{ api_token }}" placeholder="Token hier eintragen…" autocomplete="off">
-        <div class="form-text">Wird in der Datenbank gespeichert, nicht im Code.</div>
+               value="{{ api_token }}" placeholder="{{ t('api_token_placeholder') }}" autocomplete="off">
+        <div class="form-text">{{ t('api_token_storage_hint') }}</div>
       </div>
       {% if api_token %}
-      <span class="text-success small">✓ Token ist konfiguriert</span>
+      <span class="text-success small">{{ t('api_token_configured') }}</span>
       {% else %}
-      <span class="text-danger small">⚠ Kein Token – API-Sync nicht möglich</span>
+      <span class="text-danger small">{{ t('api_token_missing') }}</span>
       {% endif %}
     </div>
   </div>
 
   <div class="card mb-4" style="max-width:600px">
-    <div class="card-header fw-semibold">⚽ Torschützenkönig bestätigen</div>
+    <div class="card-header fw-semibold">⚽ {{ t('admin_scorer_confirm_title') }}</div>
     <div class="card-body">
       <p class="text-muted small mb-3">
-        Nach Turnierende hier den offiziellen Torschützenkönig eintragen.
-        Die Schreibweise muss <strong>exakt</strong> einem der Spieler-Tipps entsprechen
-        (Groß-/Kleinschreibung wird ignoriert). Nach dem Speichern werden Punkte sofort vergeben.
+        {{ t('admin_scorer_confirm_hint') }}
       </p>
       <div class="mb-3">
-        <label class="form-label fw-semibold">Torschützenkönig (offiziell)</label>
+        <label class="form-label fw-semibold">{{ t('admin_scorer_label') }}</label>
         <input type="text" name="top_scorer" class="form-control" maxlength="128"
-               value="{{ top_scorer or '' }}" placeholder="z. B. Lionel Messi">
+               value="{{ top_scorer or '' }}" placeholder="{{ t('player_name_placeholder') }}">
       </div>
-      {% if scorer_tips %}
-      <div class="mb-2">
-        <label class="form-label text-muted small">Abgegebene Tipps der Spieler:</label>
-        <ul class="list-group list-group-flush">
-          {% for st in scorer_tips %}
-          <li class="list-group-item py-1 d-flex justify-content-between align-items-center">
-            <span><strong>{{ st.user.username }}</strong>: {{ st.player }}</span>
-            {% if top_scorer %}
-              {% if st.player.lower() == top_scorer.lower() %}
-              <span class="badge bg-success">+10</span>
-              {% else %}
-              <span class="badge bg-secondary">0</span>
-              {% endif %}
-            {% endif %}
-          </li>
-          {% endfor %}
-        </ul>
-      </div>
-      {% else %}
-      <p class="text-muted small">Noch keine Tipps abgegeben.</p>
-      {% endif %}
     </div>
   </div>
 
-  <button type="submit" class="btn btn-success">Einstellungen speichern</button>
+  <button type="submit" class="btn btn-success">{{ t('save') }}</button>
 </form>
+
+<!-- Sondertipps der Spieler bearbeiten -->
+<div class="card mb-4" style="max-width:700px">
+  <div class="card-header fw-semibold">⚽ {{ t('admin_submitted_tips_label') }}</div>
+  <div class="card-body">
+    <ul class="list-group list-group-flush">
+      {% for row in scorer_rows %}
+      <li class="list-group-item d-flex justify-content-between align-items-center gap-2 flex-wrap">
+        <span class="fw-semibold">{{ row.user.username }}</span>
+        <form method="post" action="/admin/scorer-tip/{{ row.user.id }}" class="d-flex gap-2 align-items-center">
+          <input type="text" name="player" class="form-control form-control-sm" style="max-width:200px"
+            value="{{ row.tip.player if row.tip else '' }}" placeholder="{{ t('no_tip_submitted') }}">
+          <button class="btn btn-sm btn-outline-primary">✓</button>
+        </form>
+        {% if top_scorer and row.tip %}
+          {% if row.tip.player.lower() == top_scorer.lower() %}
+          <span class="badge bg-success">+10</span>
+          {% else %}
+          <span class="badge bg-secondary">0</span>
+          {% endif %}
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<div class="card mb-4" style="max-width:700px">
+  <div class="card-header fw-semibold">🏆 {{ t('admin_champion_tips_title') }}</div>
+  <div class="card-body">
+    <ul class="list-group list-group-flush">
+      {% for row in champion_rows %}
+      <li class="list-group-item d-flex justify-content-between align-items-center gap-2 flex-wrap">
+        <span class="fw-semibold">{{ row.user.username }}</span>
+        <form method="post" action="/admin/champion-tip/{{ row.user.id }}" class="d-flex gap-2 align-items-center">
+          <select name="team" class="form-select form-select-sm" style="max-width:200px">
+            <option value="" {% if not row.tip %}selected{% endif %}>{{ t('no_tip_submitted') }}</option>
+            {% for team in all_teams %}
+            <option value="{{ team }}" {% if row.tip and row.tip.team == team %}selected{% endif %}>{{ team }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn btn-sm btn-outline-primary">✓</button>
+        </form>
+        {% if row.tip and row.tip.points %}
+        <span class="badge bg-success">+{{ row.tip.points }}</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<p class="text-muted small">ℹ️ {{ t('admin_edit_tips_hint') }}</p>
 
 {% endblock %}

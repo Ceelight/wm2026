@@ -45,19 +45,19 @@
             <label class="form-label">{{ t('confirm_password') }}</label>
             <input type="password" name="confirm_password" class="form-control" autocomplete="new-password">
           </div>
-          <small class="text-muted">Leer lassen, um das Passwort nicht zu ändern.</small>
+          <small class="text-muted">{{ t('password_leave_blank') }}</small>
         </div>
       </div>
 
       <div class="card mb-3">
-        <div class="card-header fw-semibold">🔒 Datenschutz</div>
+        <div class="card-header fw-semibold">🔒 {{ t('privacy') }}</div>
         <div class="card-body">
           <div class="form-check form-switch">
             <input class="form-check-input" type="checkbox" name="tips_public" id="tips_public"
               {% if user.tips_public %}checked{% endif %}>
-            <label class="form-check-label" for="tips_public">Meine Tipps sind für andere sichtbar</label>
+            <label class="form-check-label" for="tips_public">{{ t('tips_public_label') }}</label>
           </div>
-          <small class="text-muted">Wenn deaktiviert, können andere Spieler deine Tipps nicht einsehen.</small>
+          <small class="text-muted">{{ t('tips_public_hint') }}</small>
         </div>
       </div>
 

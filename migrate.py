@@ -26,6 +26,14 @@ migrations = [
             player VARCHAR(128) NOT NULL,
             points INTEGER DEFAULT 0
         )"""),
+    ("notifications", """
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            message VARCHAR(256) NOT NULL,
+            created_at DATETIME,
+            read BOOLEAN NOT NULL DEFAULT 0
+        )"""),
 ]
 
 with engine.connect() as conn:
@@ -36,5 +44,11 @@ with engine.connect() as conn:
         except Exception as e:
             print(f"  {name}: bereits vorhanden ({e})")
     conn.commit()
+
+    # Rundenname korrigieren: "Runde der 32" hieß fachlich korrekt "Sechzehntelfinale"
+    result = conn.execute(text("UPDATE matches SET round = 'Sechzehntelfinale' WHERE round = 'Runde der 32'"))
+    conn.commit()
+    if result.rowcount:
+        print(f"✓ {result.rowcount} Spiele von 'Runde der 32' zu 'Sechzehntelfinale' umbenannt")
 
 print("Migration abgeschlossen.")

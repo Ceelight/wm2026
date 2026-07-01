@@ -2,22 +2,22 @@
 {% block content %}
 
 <div class="d-flex align-items-center gap-3 mb-3">
-  <a href="/" class="btn btn-sm btn-outline-secondary">← Übersicht</a>
+  <a href="/" class="btn btn-sm btn-outline-secondary">← {{ t('dashboard') }}</a>
   <h4 class="mb-0 fw-bold">{{ match.team1 }} vs {{ match.team2 }}</h4>
 </div>
 
 <div class="card mb-4">
   <div class="card-body py-2 px-3">
     <div class="d-flex align-items-center gap-3 flex-wrap">
-      <span class="text-muted small">{{ match.round }}</span>
-      <span class="text-muted small">{{ match.kickoff_utc|fmt_mesz }} MESZ</span>
+      <span class="text-muted small">{{ tr_round(match.round) }}</span>
+      <span class="text-muted small">{{ match.kickoff_utc|fmt_mesz }} {{ t('timezone_abbr') }}</span>
       {% if match.city %}<span class="text-muted small">{{ match.city }}</span>{% endif %}
       {% if match.score1 is not none %}
-        <span class="badge bg-success fs-6">Ergebnis: {{ match.score1 }}:{{ match.score2 }}</span>
+        <span class="badge bg-success fs-6">{{ t('result') }}: {{ match.score1 }}:{{ match.score2 }}</span>
       {% elif match.status == 'live' %}
-        <span class="badge bg-danger">🔴 Live</span>
+        <span class="badge bg-danger">🔴 {{ t('status_live') }}</span>
       {% else %}
-        <span class="badge bg-secondary">Ausstehend</span>
+        <span class="badge bg-secondary">{{ t('status_scheduled') }}</span>
       {% endif %}
     </div>
   </div>
@@ -27,10 +27,10 @@
   <table class="table table-hover align-middle">
     <thead class="table-light">
       <tr>
-        <th>Spieler</th>
-        <th class="text-center">Tipp</th>
+        <th>{{ t('player') }}</th>
+        <th class="text-center">{{ t('tip') }}</th>
         {% if match.score1 is not none %}
-        <th class="text-center">Punkte</th>
+        <th class="text-center">{{ t('points') }}</th>
         {% endif %}
       </tr>
     </thead>
@@ -39,22 +39,31 @@
       <tr {% if row.user.id == user.id %}class="table-warning fw-bold"{% endif %}>
         <td>
           {{ row.user.username }}
-          {% if row.user.id == user.id %}<span class="badge bg-warning text-dark ms-1">Du</span>{% endif %}
+          {% if row.user.id == user.id %}<span class="badge bg-warning text-dark ms-1">{{ t('you') }}</span>{% endif %}
         </td>
         <td class="text-center">
-          {% if row.hidden %}
-            <span class="text-muted small fst-italic">🔒 privat</span>
+          {% if user.role == 'admin' %}
+            <form method="post" action="/admin/tip/{{ match.id }}/{{ row.user.id }}" class="d-flex align-items-center justify-content-center gap-1">
+              <input type="number" name="tip_score1" min="0" max="30" class="form-control form-control-sm" style="width:55px"
+                value="{{ row.tip.tip_score1 if row.tip and row.tip.tip_score1 is not none else '' }}" placeholder="0">
+              <span>:</span>
+              <input type="number" name="tip_score2" min="0" max="30" class="form-control form-control-sm" style="width:55px"
+                value="{{ row.tip.tip_score2 if row.tip and row.tip.tip_score2 is not none else '' }}" placeholder="0">
+              <button type="submit" class="btn btn-sm btn-outline-primary">✓</button>
+            </form>
+          {% elif row.hidden %}
+            <span class="text-muted small fst-italic">🔒 {{ t('private') }}</span>
           {% elif not locked %}
             <span class="text-muted small fst-italic">—</span>
           {% elif row.tip and row.tip.tip_score1 is not none %}
             <span class="fw-bold">{{ row.tip.tip_score1 }}:{{ row.tip.tip_score2 }}</span>
           {% else %}
-            <span class="text-muted fst-italic">kein Tipp</span>
+            <span class="text-muted fst-italic">{{ t('not_tipped') }}</span>
           {% endif %}
         </td>
         {% if match.score1 is not none %}
         <td class="text-center">
-          {% if row.hidden %}
+          {% if row.hidden and user.role != 'admin' %}
             —
           {% elif row.tip and row.tip.tip_score1 is not none %}
             <span class="badge
@@ -75,8 +84,10 @@
   </table>
 </div>
 
-{% if not locked %}
-<p class="text-muted small text-center">Tipps anderer Spieler werden erst nach Anpfiff sichtbar.</p>
+{% if user.role == 'admin' %}
+<p class="text-muted small text-center">ℹ️ {{ t('admin_edit_tips_hint') }}</p>
+{% elif not locked %}
+<p class="text-muted small text-center">{{ t('tips_visible_after_kickoff') }}</p>
 {% endif %}
 
 {% endblock %}

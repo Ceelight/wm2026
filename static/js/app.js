@@ -6,29 +6,34 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Round filter
+  const roundTabsEl = document.getElementById('roundTabs');
   const tabs = document.querySelectorAll('#roundTabs .nav-link');
   const cards = document.querySelectorAll('.match-card');
-
   const groupTables = document.querySelectorAll('.group-table-section');
+
+  function applyRoundFilter(round) {
+    // Match cards
+    cards.forEach(card => {
+      card.style.display = (round === 'all' || card.dataset.round === round) ? '' : 'none';
+    });
+    // Gruppentabellen
+    groupTables.forEach(tbl => {
+      tbl.classList.toggle('d-none', tbl.dataset.tableRound !== round);
+    });
+  }
 
   tabs.forEach(tab => {
     tab.addEventListener('click', e => {
       e.preventDefault();
       tabs.forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
-      const round = tab.dataset.round;
-
-      // Match cards
-      cards.forEach(card => {
-        card.style.display = (round === 'all' || card.dataset.round === round) ? '' : 'none';
-      });
-
-      // Gruppentabellen
-      groupTables.forEach(tbl => {
-        tbl.classList.toggle('d-none', tbl.dataset.tableRound !== round);
-      });
+      applyRoundFilter(tab.dataset.round);
     });
   });
+
+  if (roundTabsEl) {
+    applyRoundFilter(roundTabsEl.dataset.defaultRound || 'all');
+  }
 
   // Tip save via AJAX
   document.querySelectorAll('.tip-form').forEach(form => {

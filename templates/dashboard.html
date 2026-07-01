@@ -13,8 +13,8 @@
 {% set nm_locked = (now >= nm_kickoff) and not next_match.tips_open %}
 <div class="card mb-4 border-primary shadow-sm">
   <div class="card-header bg-primary text-white fw-bold d-flex justify-content-between align-items-center">
-    <span>{% if next_match.status == 'live' %}🔴 Aktuelles Spiel{% else %}⏭ Nächstes Spiel{% endif %}</span>
-    <small class="fw-normal">{{ nm_kickoff|fmt_mesz }} MESZ · {{ next_match.round }}</small>
+    <span>{% if next_match.status == 'live' %}🔴 {{ t('current_match') }}{% else %}⏭ {{ t('next_match_label') }}{% endif %}</span>
+    <small class="fw-normal">{{ nm_kickoff|fmt_mesz }} {{ t('timezone_abbr') }} · {{ tr_round(next_match.round) }}</small>
   </div>
   <div class="card-body py-3 px-3">
     <div class="row align-items-center g-3">
@@ -24,7 +24,7 @@
           {% if next_match.score1 is not none %}
           <span class="badge bg-success ms-1 fs-6">{{ next_match.score1 }}:{{ next_match.score2 }}</span>
           {% elif nm_locked %}
-          <span class="badge bg-danger ms-1">Live</span>
+          <span class="badge bg-danger ms-1">{{ t('status_live') }}</span>
           {% endif %}
         </div>
         {% if next_match.city %}<small class="text-muted">{{ next_match.city }}</small>{% endif %}
@@ -74,13 +74,13 @@
 
 <!-- Round filter tabs -->
 <div class="mb-3 overflow-auto">
-  <ul class="nav nav-pills flex-nowrap" id="roundTabs">
+  <ul class="nav nav-pills flex-nowrap" id="roundTabs" data-default-round="{{ default_round }}">
     <li class="nav-item">
-      <a class="nav-link active" href="#" data-round="all">{{ t('all_groups') }}</a>
+      <a class="nav-link {% if default_round == 'all' %}active{% endif %}" href="#" data-round="all">{{ t('all_groups') }}</a>
     </li>
     {% for r in rounds %}
     <li class="nav-item">
-      <a class="nav-link" href="#" data-round="{{ r }}">{{ r }}</a>
+      <a class="nav-link {% if default_round == r %}active{% endif %}" href="#" data-round="{{ r }}">{{ tr_round(r) }}</a>
     </li>
     {% endfor %}
   </ul>
@@ -91,7 +91,7 @@
 <div class="group-table-section d-none mb-3" data-table-round="{{ rnd }}">
   <div class="card">
     <div class="card-header py-2 fw-semibold bg-success text-white">
-      📊 {{ rnd }} – Tabelle (deine Tipps)
+      📊 {{ tr_round(rnd) }} – {{ t('group_table_suffix') }}
     </div>
     <div class="table-responsive">
       <table class="table table-sm table-hover mb-0 align-middle">
@@ -99,13 +99,13 @@
           <tr>
             <th>#</th>
             <th>Team</th>
-            <th class="text-center" title="Spiele">Sp</th>
-            <th class="text-center" title="Siege">S</th>
-            <th class="text-center" title="Unentschieden">U</th>
-            <th class="text-center" title="Niederlagen">N</th>
-            <th class="text-center" title="Tore:Gegentore">Tore</th>
-            <th class="text-center" title="Tordifferenz">TD</th>
-            <th class="text-center fw-bold" title="Punkte">Pts</th>
+            <th class="text-center" title="{{ t('stat_played_title') }}">{{ t('stat_played') }}</th>
+            <th class="text-center" title="{{ t('stat_wins_title') }}">{{ t('stat_wins') }}</th>
+            <th class="text-center" title="{{ t('stat_draws_title') }}">{{ t('stat_draws') }}</th>
+            <th class="text-center" title="{{ t('stat_losses_title') }}">{{ t('stat_losses') }}</th>
+            <th class="text-center" title="{{ t('stat_goals_title') }}">{{ t('stat_goals') }}</th>
+            <th class="text-center" title="{{ t('stat_diff_title') }}">{{ t('stat_diff') }}</th>
+            <th class="text-center fw-bold" title="{{ t('stat_points_title') }}">Pts</th>
           </tr>
         </thead>
         <tbody>
@@ -126,7 +126,7 @@
       </table>
     </div>
     <div class="card-footer text-muted small py-1">
-      🟢 Direkte Qualifikation &nbsp;🟡 Mögliche Qualifikation als Gruppendritter
+      🟢 {{ t('legend_direct_qualification') }} &nbsp;🟡 {{ t('legend_possible_third') }}
     </div>
   </div>
 </div>
@@ -139,13 +139,14 @@
 {% set locked = (now >= kickoff) and not match.tips_open %}
 {% set has_result = match.score1 is not none %}
 {% set is_current = next_match and match.id == next_match.id %}
-<div class="match-card card mb-2 {% if has_result %}border-0 bg-light{% endif %}{% if is_current and next_match.status == 'live' %} border-danger{% elif is_current %} border-primary{% endif %}" data-round="{{ match.round }}">
+{% set round_hidden = default_round != 'all' and match.round != default_round %}
+<div class="match-card card mb-2 {% if has_result %}border-0 bg-light{% endif %}{% if is_current and next_match.status == 'live' %} border-danger{% elif is_current %} border-primary{% endif %}" data-round="{{ match.round }}"{% if round_hidden %} style="display:none"{% endif %}>
   <div class="card-body py-2 px-3">
     <div class="row align-items-center g-2">
       <!-- Round + Date -->
       <div class="col-12 col-md-2">
-        <small class="text-muted d-block">{{ match.round }}</small>
-        <small class="text-muted">{{ kickoff|fmt_mesz }} MESZ</small>
+        <small class="text-muted d-block">{{ tr_round(match.round) }}</small>
+        <small class="text-muted">{{ kickoff|fmt_mesz }} {{ t('timezone_abbr') }}</small>
       </div>
       <!-- Teams + Result -->
       <div class="col-12 col-md-4">
@@ -234,7 +235,10 @@
             <span class="badge bg-danger">0</span> {{ t('points_0') }}
           </li>
           <li class="list-group-item d-flex align-items-center gap-2">
-            <span class="badge bg-warning text-dark">+10</span> Weltmeister richtig getippt
+            <span class="badge bg-warning text-dark">+10</span> {{ t('points_champion_bonus') }}
+          </li>
+          <li class="list-group-item d-flex align-items-center gap-2">
+            <span class="badge bg-warning text-dark">+10</span> {{ t('points_scorer_bonus') }}
           </li>
         </ul>
       </div>
